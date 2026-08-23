@@ -30,17 +30,18 @@ public static class LedgerLiteClientServices
 
         var baseAddress = BuildBaseAddress(configuration["Api:BaseUrl"]);
 
-        // Shared primary handler: on WebAssembly this routes through the browser fetch
-        // pipeline, on the server it is a regular sockets handler. A single shared
-        // instance keeps connection pooling centralized.
-        //
-        // The HttpClient for ILedgerLiteApiClient is composed per-scope instead of via
-        // IHttpClientFactory: the factory builds and caches its handler chain from a
-        // root-level scope, which would capture a BearerTokenHandler whose ITokenStore
-        // (and circuit-scoped IJSRuntime) belongs to no circuit — breaking token
-        // refresh on Interactive Server. Per-scope composition gives each circuit
-        // (and the single WebAssembly scope) a correctly wired chain.
-        services.TryAddSingleton<HttpMessageHandler>(static _ => new HttpClientHandler());
+        // The handler chain and HttpClient for ILedgerLiteApiClient are composed
+        // per-scope instead of via IHttpClientFactory: the factory builds and caches
+        // its chain from a root-level scope, which would capture a BearerTokenHandler
+        // whose ITokenStore (and circuit-scoped IJSRuntime) belongs to no circuit —
+        // breaking token attach on Interactive Server. A scoped primary handler means
+        // each Blazor circuit (and the single WebAssembly scope) owns its complete
+        // chain, and scope disposal tears down exactly that chain: a DelegatingHandler
+        // disposes its inner handler when the scope ends, so sharing the primary
+        // handler as a singleton would let one circuit's teardown kill every other
+        // circuit's connection pool. On WebAssembly the scoped HttpClientHandler
+        // routes through the browser fetch pipeline.
+        services.TryAddScoped<HttpMessageHandler>(static _ => new HttpClientHandler());
 
         services.TryAddScoped<ITokenStore, LocalStorageTokenStore>();
         services.TryAddScoped<BearerTokenHandler>();
@@ -65,6 +66,7 @@ public static class LedgerLiteClientServices
         services.AddCascadingAuthenticationState();
         return services;
     }
+
 
     private static Uri BuildBaseAddress(string? baseUrl)
     {

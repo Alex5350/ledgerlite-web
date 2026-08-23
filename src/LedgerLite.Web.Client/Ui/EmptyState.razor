@@ -1,0 +1,43 @@
+<div class="@($"flex flex-col items-center justify-center gap-3 py-14 text-center {Class}")">
+    <div class="rounded-full border border-white/[0.07] bg-white/[0.03] p-4 text-slate-500">
+        @if (IconFragment is not null)
+        {
+            @IconFragment
+        }
+        else
+        {
+            <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+                <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+            </svg>
+        }
+    </div>
+    <div class="max-w-sm">
+        <p class="font-display text-base font-semibold text-slate-300">@Title</p>
+        @if (!string.IsNullOrWhiteSpace(Hint))
+        {
+            <p class="mt-1 text-sm leading-relaxed text-slate-500">@Hint</p>
+        }
+    </div>
+    @if (ActionFragment is not null)
+    {
+        <div class="mt-1">@ActionFragment</div>
+    }
+</div>
+
+@code {
+    /// <summary>Headline, e.g. "No accounts yet".</summary>
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    /// <summary>Muted explanatory line.</summary>
+    [Parameter] public string? Hint { get; set; }
+
+    /// <summary>Optional icon (inline SVG, size-6); defaults to an inbox glyph.</summary>
+    [Parameter] public RenderFragment? IconFragment { get; set; }
+
+    /// <summary>Optional call-to-action below the text (e.g. a Button).</summary>
+    [Parameter] public RenderFragment? ActionFragment { get; set; }
+
+    /// <summary>Extra classes for the root.</summary>
+    [Parameter] public string Class { get; set; } = string.Empty;
+}

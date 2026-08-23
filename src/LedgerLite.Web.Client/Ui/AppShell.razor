@@ -1,0 +1,236 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject PeriodState PeriodState
+@inject ILedgerLiteApiClient Api
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<div class="min-h-screen lg:pl-[248px]">
+    @* ---------- Desktop sidebar (fixed 248px) ---------- *@
+    <aside class="fixed inset-y-0 left-0 z-40 hidden w-[248px] flex-col border-r border-white/[0.07] bg-ink-900/70 backdrop-blur-md lg:flex">
+        <div class="flex h-16 shrink-0 items-center border-b border-white/[0.07] px-5">
+            <a href="/" class="group flex items-center gap-3 outline-none">
+                <span class="flex size-8 items-center justify-center rounded-lg bg-accent-500 text-ink-950 shadow-[0_0_20px_-4px] shadow-accent-500/60 transition-shadow duration-200 group-hover:shadow-accent-500/90">
+                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+                        <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+                        <path d="M7 21h10" />
+                        <path d="M12 3v18" />
+                        <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" />
+                    </svg>
+                </span>
+                <span class="leading-tight">
+                    <span class="block font-display text-[15px] font-semibold tracking-tight text-slate-100">LedgerLite</span>
+                    <span class="block text-[11px] text-slate-500">personal ledger</span>
+                </span>
+            </a>
+        </div>
+        <div class="flex-1 overflow-y-auto px-3 py-4">
+            <AppShellNav Class="flex flex-col" />
+        </div>
+    </aside>
+
+    @* ---------- Mobile top bar + collapsible nav (checkbox/peer — no JS) ---------- *@
+    <input type="checkbox" id="ledgerlite-nav-toggle" class="peer sr-only" aria-hidden="true" />
+    <header class="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-white/[0.07] bg-ink-950/85 px-4 backdrop-blur-md lg:hidden">
+        <a href="/" class="flex items-center gap-2.5 outline-none">
+            <span class="flex size-7 items-center justify-center rounded-lg bg-accent-500 text-ink-950 shadow-[0_0_16px_-4px] shadow-accent-500/60">
+                <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 3v18" />
+                    <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" />
+                    <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+                    <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+                    <path d="M7 21h10" />
+                </svg>
+            </span>
+            <span class="font-display text-sm font-semibold text-slate-100">LedgerLite</span>
+        </a>
+        <label for="ledgerlite-nav-toggle"
+               class="flex size-9 cursor-pointer items-center justify-center rounded-lg border border-white/10 text-slate-300 transition-colors hover:bg-white/5"
+               aria-label="Toggle navigation">
+            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 6h16" />
+                <path d="M4 12h16" />
+                <path d="M4 18h16" />
+            </svg>
+        </label>
+    </header>
+    <div class="hidden border-b border-white/[0.07] bg-ink-900/95 px-3 py-4 backdrop-blur-md peer-checked:block lg:hidden!">
+        <AppShellNav Class="flex flex-col" />
+    </div>
+
+    @* ---------- Topbar: period selector, balance pill, user ---------- *@
+    <header class="sticky top-14 z-30 border-b border-white/[0.07] bg-ink-950/80 backdrop-blur-md lg:top-0">
+        <div class="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:px-8">
+            <div class="flex min-w-0 items-center gap-2.5">
+                <svg class="size-4 shrink-0 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M8 2v4" />
+                    <path d="M16 2v4" />
+                    <rect width="18" height="18" x="3" y="4" rx="2" />
+                    <path d="M3 10h18" />
+                </svg>
+                <select value="@SelectedPeriodId"
+                        disabled="@(PeriodState.Periods.Count == 0)"
+                        @onchange="OnPeriodSelectedAsync"
+                        aria-label="Fiscal period"
+                        class="max-w-[200px] cursor-pointer truncate rounded-lg border border-white/10 bg-ink-800 px-3 py-1.5 text-sm text-slate-200 outline-none transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 disabled:cursor-default disabled:opacity-60">
+                    @if (PeriodState.CurrentPeriod is null)
+                    {
+                        <option value="">@(PeriodState.Periods.Count == 0 ? "No periods" : "Select a period")</option>
+                    }
+                    @foreach (FiscalPeriodResponse period in PeriodState.Periods)
+                    {
+                        <option value="@period.Id">@period.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="flex-1"></div>
+
+            <span class="hidden items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium md:inline-flex @BalancePillClass">
+                <span class="size-1.5 rounded-full @BalanceDotClass"></span>
+                @BalancePillText
+            </span>
+
+            <AuthorizeView>
+                <Authorized>
+                    <span class="hidden max-w-[220px] truncate font-mono text-xs text-slate-500 md:block" title="@context.User.Identity?.Name">
+                        @context.User.Identity?.Name
+                    </span>
+                    <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Sm" OnClick="LogoutAsync">
+                        <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                            <path d="m16 17 5-5-5-5" />
+                            <path d="M21 12H9" />
+                        </svg>
+                        Sign out
+                    </Button>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+    </header>
+
+    <main class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        @Body
+    </main>
+</div>
+
+@code {
+    private bool _balanceKnown;
+    private bool _isBalanced;
+    private bool _balanceLoading;
+
+    private string SelectedPeriodId => PeriodState.CurrentPeriod?.Id.ToString() ?? string.Empty;
+
+    protected override void OnInitialized()
+    {
+        PeriodState.Changed += OnPeriodChanged;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // During the static prerender there is no auth token available yet, so API calls
+        // would only produce noise (and authorized pages redirect anyway). Wait for the
+        // interactive circuit to boot before touching the API.
+        if (!RendererInfo.IsInteractive)
+        {
+            return;
+        }
+
+        await EnsurePeriodsLoadedAsync();
+        await RefreshBalancePillAsync();
+    }
+
+    private async Task EnsurePeriodsLoadedAsync()
+    {
+        if (PeriodState.IsLoaded)
+        {
+            return;
+        }
+
+        try
+        {
+            await PeriodState.LoadAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            // Selector stays empty; pages surface their own load errors.
+        }
+    }
+
+    private void OnPeriodChanged() => _ = InvokeAsync(async () =>
+    {
+        await RefreshBalancePillAsync();
+        StateHasChanged();
+    });
+
+    private async Task RefreshBalancePillAsync()
+    {
+        if (PeriodState.CurrentPeriod is null)
+        {
+            _balanceKnown = false;
+            _balanceLoading = false;
+            return;
+        }
+
+        _balanceLoading = true;
+        try
+        {
+            TrialBalanceResponse balance = await Api.GetTrialBalanceAsync(PeriodState.CurrentPeriod.Id);
+            _isBalanced = balance.IsBalanced;
+            _balanceKnown = true;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _balanceKnown = false;
+        }
+        finally
+        {
+            _balanceLoading = false;
+        }
+    }
+
+    private async Task OnPeriodSelectedAsync(ChangeEventArgs args)
+    {
+        if (!Guid.TryParse(args.Value?.ToString(), out Guid id))
+        {
+            return;
+        }
+
+        FiscalPeriodResponse? period = PeriodState.Periods.FirstOrDefault(candidate => candidate.Id == id);
+        if (period is null || PeriodState.CurrentPeriod?.Id == id)
+        {
+            return;
+        }
+
+        await PeriodState.SetAsync(period);
+    }
+
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+
+    private string BalancePillText => PeriodState.CurrentPeriod is null
+        ? "No period"
+        : _balanceLoading
+            ? "Checking\u2026"
+            : _balanceKnown
+                ? _isBalanced ? "Balanced" : "Out of balance"
+                : "No data";
+
+    private string BalancePillClass => !_balanceKnown
+        ? "border-white/10 bg-white/5 text-slate-400"
+        : _isBalanced
+            ? "border-accent-500/30 bg-accent-500/10 text-accent-300"
+            : "border-danger-400/30 bg-danger-400/10 text-danger-400";
+
+    private string BalanceDotClass => !_balanceKnown
+        ? "bg-slate-500"
+        : _isBalanced
+            ? "bg-accent-400 shadow-[0_0_8px] shadow-accent-400/70"
+            : "bg-danger-400 shadow-[0_0_8px] shadow-danger-400/70";
+
+    public void Dispose() => PeriodState.Changed -= OnPeriodChanged;
+}

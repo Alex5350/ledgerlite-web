@@ -1,0 +1,477 @@
+@using System.Globalization
+@page "/journal"
+@implements IDisposable
+@inject PeriodState PeriodState
+@inject ILedgerLiteApiClient Api
+@inject IToastService Toast
+
+<PageTitle>Journal · LedgerLite</PageTitle>
+
+<div class="flex flex-col gap-6">
+    <header class="flex flex-wrap items-center justify-between gap-4 animate-rise">
+        <div>
+            <h1 class="font-display text-2xl font-semibold text-slate-100">Journal</h1>
+            <p class="mt-1 text-sm text-slate-500">@(PeriodState.CurrentPeriod is { } p ? $"Posted entries · {p.Name}" : "Posted entries")</p>
+        </div>
+        <Button Variant="ButtonVariant.Primary" Disabled="PeriodState.CurrentPeriod is null" OnClick="OpenPostModalAsync">
+            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14" />
+                <path d="M12 5v14" />
+            </svg>
+            Post entry
+        </Button>
+    </header>
+
+    @if (PeriodState.CurrentPeriod is null)
+    {
+        <Card Class="animate-rise" Style="animation-delay:50ms">
+            <EmptyState Title="Select a period first"
+                        Hint="Journal entries post into a fiscal period — pick one in the topbar, or create a new period.">
+                <ActionFragment>
+                    <a href="/periods"
+                       class="text-xs font-medium text-accent-400 outline-none transition-colors hover:text-accent-300">Go to fiscal periods &rarr;</a>
+                </ActionFragment>
+            </EmptyState>
+        </Card>
+    }
+    else if (_isLoading)
+    {
+        <Card Class="animate-rise" Style="animation-delay:50ms">
+            <div class="flex flex-col gap-4">
+                <Skeleton Class="h-10 w-full" />
+                <Skeleton Class="h-10 w-full" />
+                <Skeleton Class="h-10 w-2/3" />
+            </div>
+        </Card>
+    }
+    else if (_error is not null)
+    {
+        <ErrorPanel Message="@_error" Retry="LoadEntriesAsync" />
+    }
+    else if (_result is null || _result.Items.Count == 0)
+    {
+        <Card Class="animate-rise" Style="animation-delay:50ms">
+            <EmptyState Title="No journal entries yet"
+                        Hint="Every entry posts at least two lines whose debits equal credits.">
+                <ActionFragment>
+                    <Button Variant="ButtonVariant.Primary" OnClick="OpenPostModalAsync">Post the first entry</Button>
+                </ActionFragment>
+            </EmptyState>
+        </Card>
+    }
+    else
+    {
+        <Card Flush="true" Class="animate-rise" Style="animation-delay:50ms">
+            <DataTable TItem="JournalEntryResponse" Items="_result.Items">
+                <TableHeader>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Lines</th>
+                    <th class="text-right">Amount</th>
+                </TableHeader>
+                <Row Context="entry">
+                    <td class="font-mono text-xs whitespace-nowrap text-slate-400 tnum">@Format.Timestamp(entry.OccurredOnUtc)</td>
+                    <td class="max-w-[28rem] truncate text-slate-200" title="@(entry.Description ?? string.Empty)">
+                        @(string.IsNullOrWhiteSpace(entry.Description) ? "—" : entry.Description)
+                    </td>
+                    <td class="text-xs text-slate-500 tnum">@($"{entry.Lines.Count} lines")</td>
+                    <td class="text-right font-mono tnum text-slate-100">@Format.Money(entry.Lines.Sum(line => line.Debit))</td>
+                </Row>
+            </DataTable>
+        </Card>
+
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <p class="font-mono text-xs text-slate-500 tnum">
+                Page @Math.Max(_result.Page, 1) of @TotalPages · @_result.TotalCount entries
+            </p>
+            <div class="flex gap-2">
+                <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Sm" Disabled="_page <= 1" OnClick="() => GoToPageAsync(_page - 1)">
+                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="m15 18-6-6 6-6" />
+                    </svg>
+                    Previous
+                </Button>
+                <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Sm" Disabled="_page >= TotalPages" OnClick="() => GoToPageAsync(_page + 1)">
+                    Next
+                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="m9 18 6-6-6-6" />
+                    </svg>
+                </Button>
+            </div>
+        </div>
+    }
+</div>
+
+@* ---------- Post entry modal (the showpiece) ---------- *@
+<Modal @bind-IsOpen="_postOpen" Title="Post journal entry" Subtitle="@(PeriodState.CurrentPeriod is { } period ? $"Books into {period.Name} · debits must equal credits" : null)">
+    <ChildContent>
+        <div class="flex flex-col gap-4">
+        <Field @bind-Value="_description" Label="Description" Placeholder="e.g. Grocery run — card payment" />
+
+        <div class="flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+                <p class="text-xs font-medium tracking-wider text-slate-500 uppercase">Lines</p>
+                <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Sm" Disabled="_lines.Count >= MaxLines" OnClick="AddLine">
+                    <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M5 12h14" />
+                        <path d="M12 5v14" />
+                    </svg>
+                    Add line
+                </Button>
+            </div>
+
+            @foreach (LineDraft line in _lines)
+            {
+                <div class="rounded-xl border border-white/[0.07] bg-ink-800/40 p-3 transition-colors focus-within:border-white/[0.14]">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="font-mono text-[10px] tracking-wider text-slate-500 uppercase tnum">Line @(_lines.IndexOf(line) + 1)</p>
+                        <button type="button"
+                                class="rounded-lg p-1.5 text-slate-500 outline-none transition-colors hover:bg-danger-500/10 hover:text-danger-400 disabled:pointer-events-none disabled:opacity-30"
+                                disabled="@(_lines.Count <= MinLines)"
+                                aria-label="Remove line"
+                                @onclick="() => RemoveLine(line)">
+                            <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M18 6 6 18" />
+                                <path d="m6 6 12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_6.5rem_6.5rem]">
+                        <SelectField Value="@AccountValue(line)"
+                                     ValueChanged="value => OnLineAccountChanged(line, value)"
+                                     Placeholder="Select account"
+                                     Error="@LineError(line)">
+                            @foreach (AccountResponse account in _accounts)
+                            {
+                                <option value="@account.Id.ToString()">@($"{account.Number} · {account.Name}")</option>
+                            }
+                        </SelectField>
+                        <Field Value="@line.Debit"
+                               ValueChanged="value => OnLineAmountChanged(line, isDebit: true, value)"
+                               Label="Debit" Placeholder="0.00" Mono="true" InputMode="decimal" />
+                        <Field Value="@line.Credit"
+                               ValueChanged="value => OnLineAmountChanged(line, isDebit: false, value)"
+                               Label="Credit" Placeholder="0.00" Mono="true" InputMode="decimal" />
+                    </div>
+                </div>
+            }
+            <p class="font-mono text-[11px] text-slate-600 tnum">@($"{_lines.Count}/{MaxLines} lines · minimum {MinLines}")</p>
+        </div>
+
+        @* Live totals + balance pill *@
+        <div class="rounded-xl border border-white/[0.07] bg-ink-900/70 p-4">
+            <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 font-mono text-sm tnum">
+                <span class="text-slate-400">
+                    Debits <span class="text-slate-100">@Format.Money(TotalDebits)</span>
+                </span>
+                <span class="text-xs tracking-[0.2em] text-slate-600 uppercase">vs</span>
+                <span class="text-slate-400">
+                    Credits <span class="text-slate-100">@Format.Money(TotalCredits)</span>
+                </span>
+            </div>
+            <div class="mt-3 flex items-center justify-between gap-3 border-t border-white/[0.07] pt-3">
+                <p class="text-xs text-slate-500">@LineHint</p>
+                @if (IsBalanced && TotalDebits > 0)
+                {
+                    <span class="inline-flex items-center gap-1.5 rounded-full border border-accent-500/30 bg-accent-500/10 px-2.5 py-0.5 text-xs font-medium text-accent-300">
+                        <svg class="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                        Balanced
+                    </span>
+                }
+                else if (TotalDebits == 0 && TotalCredits == 0)
+                {
+                    <span class="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-medium text-slate-400">Awaiting amounts</span>
+                }
+                else
+                {
+                    <span class="inline-flex items-center gap-1.5 rounded-full border border-danger-400/30 bg-danger-400/10 px-2.5 py-0.5 text-xs font-medium text-danger-400 tnum">
+                        Out of balance by @Format.Money(Math.Abs(TotalDebits - TotalCredits))
+                    </span>
+                }
+            </div>
+        </div>
+
+        @if (_postError is not null)
+        {
+            <div class="flex items-start gap-3 rounded-xl border border-danger-400/25 bg-danger-500/[0.08] px-4 py-3" role="alert">
+                <svg class="mt-0.5 size-4 shrink-0 text-danger-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 8v4" />
+                    <path d="M12 16h.01" />
+                </svg>
+                <p class="text-sm text-danger-400">@_postError</p>
+            </div>
+        }
+        </div>
+    </ChildContent>
+    <FooterTemplate>
+        <Button Variant="ButtonVariant.Secondary" OnClick="CancelPost">Cancel</Button>
+        <Button Variant="ButtonVariant.Primary" Disabled="!CanPost" Loading="_posting" OnClick="PostAsync">Post entry</Button>
+    </FooterTemplate>
+</Modal>
+
+@code {
+    private const int MinLines = 2;
+    private const int MaxLines = 12;
+
+    private PagedResult<JournalEntryResponse>? _result;
+    private bool _isLoading = true;
+    private string? _error;
+    private int _page = 1;
+    private const int PageSize = 10;
+
+    private readonly List<LineDraft> _lines = [];
+    private IReadOnlyList<AccountResponse> _accounts = [];
+    private bool _accountsLoaded;
+    private bool _postOpen;
+    private bool _posting;
+    private string _description = string.Empty;
+    private string? _postError;
+
+    private int TotalPages => _result is { TotalCount: > 0 }
+        ? (int)Math.Ceiling((double)_result.TotalCount / Math.Max(_result.PageSize, 1))
+        : 1;
+
+    protected override void OnInitialized() => PeriodState.Changed += OnPeriodChanged;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!PeriodState.IsLoaded)
+            {
+                await PeriodState.LoadAsync();
+            }
+
+            if (PeriodState.CurrentPeriod is not null)
+            {
+                await LoadEntriesAsync();
+            }
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex is ApiException api ? api.PrimaryError : "Could not reach the LedgerLite API. Make sure it is running.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadEntriesAsync()
+    {
+        if (PeriodState.CurrentPeriod is null)
+        {
+            return;
+        }
+
+        _error = null;
+        _isLoading = true;
+        try
+        {
+            _result = await Api.GetJournalEntriesAsync(
+                PeriodState.CurrentPeriod.Id,
+                page: Math.Max(_page, 1),
+                pageSize: PageSize);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex is ApiException api ? api.PrimaryError : "Could not reach the LedgerLite API. Make sure it is running.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnPeriodChanged() => _ = InvokeAsync(async () =>
+    {
+        _page = 1;
+        await LoadEntriesAsync();
+    });
+
+    private async Task GoToPageAsync(int page)
+    {
+        _page = Math.Clamp(page, 1, Math.Max(TotalPages, 1));
+        await LoadEntriesAsync();
+    }
+
+    // ----- Post-entry modal -----
+
+    private async Task OpenPostModalAsync()
+    {
+        _postError = null;
+        _description = string.Empty;
+        ResetDraft();
+
+        if (!_accountsLoaded && PeriodState.CurrentPeriod is not null)
+        {
+            try
+            {
+                _accounts = await Api.GetAccountsAsync(PeriodState.CurrentPeriod.Id);
+                _accountsLoaded = true;
+            }
+            catch (ApiException ex)
+            {
+                _postError = ex.PrimaryError;
+            }
+            catch (HttpRequestException)
+            {
+                _postError = "Could not reach the LedgerLite API. Make sure it is running.";
+            }
+        }
+
+        _postOpen = true;
+    }
+
+    private void ResetDraft()
+    {
+        _lines.Clear();
+        _lines.Add(new LineDraft());
+        _lines.Add(new LineDraft());
+    }
+
+    private void CancelPost()
+    {
+        _postOpen = false;
+        _postError = null;
+    }
+
+    private void AddLine()
+    {
+        if (_lines.Count < MaxLines)
+        {
+            _lines.Add(new LineDraft());
+        }
+    }
+
+    private void RemoveLine(LineDraft line)
+    {
+        if (_lines.Count > MinLines)
+        {
+            _lines.Remove(line);
+        }
+    }
+
+    private static string AccountValue(LineDraft line) => line.AccountId?.ToString() ?? string.Empty;
+
+    private void OnLineAccountChanged(LineDraft line, string value) =>
+        line.AccountId = Guid.TryParse(value, out Guid id) ? id : null;
+
+    private void OnLineAmountChanged(LineDraft line, bool isDebit, string value)
+    {
+        if (isDebit)
+        {
+            line.Debit = value;
+        }
+        else
+        {
+            line.Credit = value;
+        }
+    }
+
+    private decimal TotalDebits => _lines.Sum(line => line.DebitAmount);
+
+    private decimal TotalCredits => _lines.Sum(line => line.CreditAmount);
+
+    private bool IsBalanced => TotalDebits == TotalCredits;
+
+    private bool LinesValid =>
+        _lines.Count is >= MinLines and <= MaxLines
+        && _lines.All(line => line.AccountId is not null)
+        && _lines.All(line => line.HasExactlyOneAmount)
+        && _lines.All(line => !line.HasInvalidInput);
+
+    private bool CanPost => LinesValid && IsBalanced && TotalDebits > 0;
+
+    private string LineHint
+    {
+        get
+        {
+            if (_lines.Any(line => !line.HasExactlyOneAmount))
+            {
+                return "Each line needs exactly one amount — either a debit or a credit.";
+            }
+
+            if (_lines.Any(line => line.AccountId is null))
+            {
+                return "Pick an account for every line.";
+            }
+
+            if (IsBalanced && TotalDebits > 0)
+            {
+                return "Ready to post.";
+            }
+
+            return "Entry posts once debits equal credits.";
+        }
+    }
+
+    private static string? LineError(LineDraft line) => line.HasInvalidInput ? "Use plain numbers like 120 or 99.50" : null;
+
+    private async Task PostAsync()
+    {
+        if (!CanPost || PeriodState.CurrentPeriod is null)
+        {
+            return;
+        }
+
+        _postError = null;
+        _posting = true;
+        try
+        {
+            var request = new CreateJournalEntryRequest(
+                PeriodId: PeriodState.CurrentPeriod.Id,
+                Description: string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
+                Lines: [.. _lines.Select(line => new JournalEntryLine(line.AccountId!.Value, line.DebitAmount, line.CreditAmount))]);
+
+            await Api.CreateJournalEntryAsync(request);
+
+            Toast.ShowSuccess("Journal entry posted.");
+            _postOpen = false;
+            _page = 1;
+            await LoadEntriesAsync();
+        }
+        catch (ApiException ex)
+        {
+            _postError = ex.PrimaryError; // 400 domain rule violations, 409 conflicts
+        }
+        catch (HttpRequestException)
+        {
+            _postError = "Could not reach the LedgerLite API. Make sure it is running.";
+        }
+        finally
+        {
+            _posting = false;
+        }
+    }
+
+    private sealed class LineDraft
+    {
+        public Guid? AccountId { get; set; }
+        public string Debit { get; set; } = string.Empty;
+        public string Credit { get; set; } = string.Empty;
+
+        public decimal DebitAmount => ParsedAmount(Debit);
+
+        public decimal CreditAmount => ParsedAmount(Credit);
+
+        /// <summary>True while a raw text is non-empty but not a valid non-negative number.</summary>
+        public bool HasInvalidInput =>
+            IsInvalidAmountText(Debit) || IsInvalidAmountText(Credit);
+
+        /// <summary>Exactly one side carries a positive amount.</summary>
+        public bool HasExactlyOneAmount => (DebitAmount > 0) ^ (CreditAmount > 0);
+
+        private static bool IsInvalidAmountText(string text) =>
+            text.Length > 0
+            && (!decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal value) || value < 0);
+
+        private static decimal ParsedAmount(string text) =>
+            decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal amount) ? amount : 0m;
+    }
+
+    public void Dispose() => PeriodState.Changed -= OnPeriodChanged;
+}

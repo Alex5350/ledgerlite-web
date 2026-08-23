@@ -1,0 +1,56 @@
+<button type="@Type"
+        class="@ButtonClass"
+        disabled="@(Disabled || Loading)"
+        @onclick="OnClick">
+    @if (Loading)
+    {
+        <Spinner Class="size-4" />
+    }
+    @ChildContent
+</button>
+
+@code {
+    /// <summary>Visual variant. Default <see cref="ButtonVariant.Primary"/> (emerald).</summary>
+    [Parameter] public ButtonVariant Variant { get; set; } = ButtonVariant.Primary;
+
+    /// <summary>Size. Default <see cref="ButtonSize.Md"/>.</summary>
+    [Parameter] public ButtonSize Size { get; set; } = ButtonSize.Md;
+
+    /// <summary>Native button type. Default "button"; use "submit" inside forms.</summary>
+    [Parameter] public string Type { get; set; } = "button";
+
+    /// <summary>Disables interaction (also forced while <see cref="Loading"/> is true).</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Shows an inline spinner and disables the button.</summary>
+    [Parameter] public bool Loading { get; set; }
+
+    /// <summary>Button label/content.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Click handler.</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    /// <summary>Extra classes appended to the computed class list.</summary>
+    [Parameter] public string Class { get; set; } = string.Empty;
+
+    private string VariantClass => Variant switch
+    {
+        ButtonVariant.Primary => "bg-accent-500 text-ink-950 hover:bg-accent-400 shadow-lg shadow-accent-500/25 hover:shadow-accent-500/40",
+        ButtonVariant.Secondary => "border border-white/10 text-slate-200 hover:border-white/20 hover:bg-white/5",
+        ButtonVariant.Danger => "bg-danger-500 text-white hover:bg-danger-400 shadow-lg shadow-danger-500/20",
+        _ => string.Empty
+    };
+
+    private string SizeClass => Size switch
+    {
+        ButtonSize.Sm => "px-3 py-1.5 text-xs",
+        ButtonSize.Md => "px-4 py-2 text-sm",
+        _ => string.Empty
+    };
+
+    private string ButtonClass =>
+        $"inline-flex items-center justify-center gap-2 rounded-lg font-medium outline-none transition-all duration-150 " +
+        $"focus-visible:ring-2 focus-visible:ring-accent-500/30 disabled:pointer-events-none disabled:opacity-50 " +
+        $"{SizeClass} {VariantClass} {Class}";
+}

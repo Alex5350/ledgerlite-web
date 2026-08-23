@@ -1,0 +1,7 @@
+@* Single pulsing placeholder line/block. Compose several for a skeleton layout. *@
+<div class="@($"animate-pulse rounded bg-white/[0.06] {Class}")" aria-hidden="true"></div>
+
+@code {
+    /// <summary>Size/shape classes, e.g. "h-3 w-24" or "h-24 w-full".</summary>
+    [Parameter] public string Class { get; set; } = "h-4 w-full";
+}

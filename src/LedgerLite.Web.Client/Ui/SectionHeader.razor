@@ -1,0 +1,19 @@
+<div class="@($"flex items-center gap-3 {Class}")">
+    <h2 class="font-display whitespace-nowrap text-lg font-semibold text-slate-100">@Title</h2>
+    <div class="h-px flex-1 bg-white/[0.07]" aria-hidden="true"></div>
+    @if (ActionFragment is not null)
+    {
+        <div class="shrink-0">@ActionFragment</div>
+    }
+</div>
+
+@code {
+    /// <summary>Section heading text.</summary>
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    /// <summary>Optional right-aligned action (e.g. "View full report" link).</summary>
+    [Parameter] public RenderFragment? ActionFragment { get; set; }
+
+    /// <summary>Extra classes for the root.</summary>
+    [Parameter] public string Class { get; set; } = string.Empty;
+}

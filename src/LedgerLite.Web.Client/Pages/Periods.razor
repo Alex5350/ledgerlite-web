@@ -1,0 +1,295 @@
+@page "/periods"
+@inject PeriodState PeriodState
+@inject ILedgerLiteApiClient Api
+@inject IToastService Toast
+
+<PageTitle>Fiscal Periods · LedgerLite</PageTitle>
+
+<div class="flex flex-col gap-6">
+    <header class="flex flex-wrap items-center justify-between gap-4 animate-rise">
+        <div>
+            <h1 class="font-display text-2xl font-semibold text-slate-100">Fiscal periods</h1>
+            <p class="mt-1 text-sm text-slate-500">Immutable windows of ledger activity. Closing a period seals it forever.</p>
+        </div>
+        <Button Variant="ButtonVariant.Primary" OnClick="OpenCreateModal">
+            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14" />
+                <path d="M12 5v14" />
+            </svg>
+            New period
+        </Button>
+    </header>
+
+    @if (_isLoading)
+    {
+        <Card Class="animate-rise" Style="animation-delay:50ms">
+            <div class="flex flex-col gap-4">
+                <Skeleton Class="h-10 w-full" />
+                <Skeleton Class="h-10 w-full" />
+                <Skeleton Class="h-10 w-2/3" />
+            </div>
+        </Card>
+    }
+    else if (_error is not null)
+    {
+        <ErrorPanel Message="@_error" Retry="ReloadAsync" />
+    }
+    else if (_periods.Count == 0)
+    {
+        <Card Class="animate-rise" Style="animation-delay:50ms">
+            <EmptyState Title="No fiscal periods yet"
+                        Hint="A fiscal period bounds your entries — create one to begin.">
+                <ActionFragment>
+                    <Button Variant="ButtonVariant.Primary" OnClick="OpenCreateModal">Create the first period</Button>
+                </ActionFragment>
+            </EmptyState>
+        </Card>
+    }
+    else
+    {
+        <Card Flush="true" Class="animate-rise" Style="animation-delay:50ms">
+            <DataTable TItem="FiscalPeriodResponse" Items="_periods">
+                <TableHeader>
+                    <th>Name</th>
+                    <th>Range</th>
+                    <th>Status</th>
+                    <th class="text-right">Actions</th>
+                </TableHeader>
+                <Row Context="period">
+                    <td>
+                        <span class="font-medium text-slate-100">@(string.IsNullOrWhiteSpace(period.Name) ? "Untitled period" : period.Name)</span>
+                        @if (PeriodState.CurrentPeriod?.Id == period.Id)
+                        {
+                            <span class="ml-2 align-middle">
+                                <Badge Tone="BadgeTone.Emerald">Selected</Badge>
+                            </span>
+                        }
+                    </td>
+                    <td class="font-mono text-xs whitespace-nowrap text-slate-400 tnum">@Format.Date(period.StartDate) &rarr; @Format.Date(period.EndDate)</td>
+                    <td>
+                        @if (period.Status is FiscalPeriodStatus.Open)
+                        {
+                            <Badge Tone="BadgeTone.Emerald"><span class="size-1.5 rounded-full bg-accent-400"></span>Open</Badge>
+                        }
+                        else
+                        {
+                            <Badge Tone="BadgeTone.Slate">Closed</Badge>
+                        }
+                    </td>
+                    <td class="text-right">
+                        @if (period.Status is FiscalPeriodStatus.Open)
+                        {
+                            <Button Variant="ButtonVariant.Secondary" Size="ButtonSize.Sm" OnClick="() => AskToClose(period)">Close</Button>
+                        }
+                        else
+                        {
+                            <span class="text-xs text-slate-600">—</span>
+                        }
+                    </td>
+                </Row>
+            </DataTable>
+        </Card>
+    }
+</div>
+
+@* ---------- Create modal ---------- *@
+<Modal @bind-IsOpen="_createOpen" Title="New fiscal period" Subtitle="Entries can only be posted inside an open period.">
+    <ChildContent>
+        <div class="flex flex-col gap-4">
+            <Field @bind-Value="_name" Label="Name" Placeholder="e.g. August 2026" Error="@_nameError" />
+            <div class="grid gap-4 sm:grid-cols-2">
+                <Field @bind-Value="_start" Label="Start date" Type="date" Error="@_startError" />
+                <Field @bind-Value="_end" Label="End date" Type="date" Error="@_endError" />
+            </div>
+            <p class="text-xs leading-relaxed text-slate-500">
+                The end date must be after the start date. Existing periods with overlapping ranges are rejected by the API.
+            </p>
+        </div>
+    </ChildContent>
+    <FooterTemplate>
+        <Button Variant="ButtonVariant.Secondary" OnClick="CloseCreateModal">Cancel</Button>
+        <Button Variant="ButtonVariant.Primary" Loading="_creating" OnClick="CreateAsync">Create period</Button>
+    </FooterTemplate>
+</Modal>
+
+@* ---------- Close confirmation ---------- *@
+<Modal @bind-IsOpen="_closeOpen" Title="Close fiscal period" Subtitle="@(_closingPeriod is { } p ? p.Name : null)">
+    <ChildContent>
+        <div class="flex items-start gap-3 rounded-xl border border-warn-400/25 bg-warn-400/[0.07] p-4">
+            <svg class="mt-0.5 size-5 shrink-0 text-warn-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                <path d="M12 9v4" />
+                <path d="M12 17h.01" />
+            </svg>
+            <div>
+                <p class="text-sm font-medium text-warn-400">This action is irreversible</p>
+                <p class="mt-1 text-sm leading-relaxed text-slate-400">
+                    Closing <span class="font-medium text-slate-200">@_closingPeriod?.Name</span> seals its ledger permanently —
+                    no further entries, accounts or budgets may be added to it. The API also rejects closing a period whose end date
+                    has not been reached yet.
+                </p>
+            </div>
+        </div>
+    </ChildContent>
+    <FooterTemplate>
+        <Button Variant="ButtonVariant.Secondary" OnClick="CancelClose">Keep it open</Button>
+        <Button Variant="ButtonVariant.Danger" Loading="_closingBusy" OnClick="ClosePeriodAsync">Close period</Button>
+    </FooterTemplate>
+</Modal>
+
+@code {
+    private IReadOnlyList<FiscalPeriodResponse> _periods = [];
+    private bool _isLoading = true;
+    private string? _error;
+
+    private bool _createOpen;
+    private bool _creating;
+    private string _name = string.Empty;
+    private string _start = string.Empty;
+    private string _end = string.Empty;
+    private string? _nameError;
+    private string? _startError;
+    private string? _endError;
+
+    private bool _closeOpen;
+    private bool _closingBusy;
+    private FiscalPeriodResponse? _closingPeriod;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await ReloadAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex is ApiException api ? api.PrimaryError : "Could not reach the LedgerLite API. Make sure it is running.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        _error = null;
+        try
+        {
+            await PeriodState.LoadAsync();
+            _periods = PeriodState.Periods;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex is ApiException api ? api.PrimaryError : "Could not reach the LedgerLite API. Make sure it is running.";
+            throw;
+        }
+    }
+
+    private void OpenCreateModal()
+    {
+        _name = string.Empty;
+        _start = Format.DateInput(DateOnly.FromDateTime(DateTime.UtcNow));
+        _end = string.Empty;
+        _nameError = null;
+        _startError = null;
+        _endError = null;
+        _createOpen = true;
+    }
+
+    private void CloseCreateModal() => _createOpen = false;
+
+    private async Task CreateAsync()
+    {
+        ValidateCreateForm();
+        if (_nameError is not null || _startError is not null || _endError is not null)
+        {
+            return;
+        }
+
+        _creating = true;
+        try
+        {
+            CreatedResponse created = await Api.CreateFiscalPeriodAsync(
+                new CreateFiscalPeriodRequest(Name: _name.Trim(), StartDate: DateOnly.Parse(_start), EndDate: DateOnly.Parse(_end)));
+
+            await ReloadAsync();
+
+            FiscalPeriodResponse? newPeriod = PeriodState.Periods.FirstOrDefault(period => period.Id == created.Id);
+            if (newPeriod is not null)
+            {
+                await PeriodState.SetAsync(newPeriod);
+            }
+
+            Toast.ShowSuccess($"Fiscal period \"{_name.Trim()}\" created.");
+            _createOpen = false;
+        }
+        catch (ApiException ex)
+        {
+            Toast.ShowError(ex.PrimaryError);
+        }
+        catch (HttpRequestException)
+        {
+            Toast.ShowError("Could not reach the LedgerLite API. Make sure it is running.");
+        }
+        finally
+        {
+            _creating = false;
+        }
+    }
+
+    private void ValidateCreateForm()
+    {
+        _nameError = string.IsNullOrWhiteSpace(_name) ? "Give the period a name." : null;
+        _startError = DateOnly.TryParse(_start, out DateOnly start) ? null : "Pick a start date.";
+        _endError = DateOnly.TryParse(_end, out DateOnly end) ? null : "Pick an end date.";
+
+        if (_startError is null && _endError is null && end <= start)
+        {
+            _endError = "End date must be after the start date.";
+        }
+    }
+
+    private void AskToClose(FiscalPeriodResponse period)
+    {
+        _closingPeriod = period;
+        _closeOpen = true;
+    }
+
+    private void CancelClose()
+    {
+        _closeOpen = false;
+        _closingPeriod = null;
+    }
+
+    private async Task ClosePeriodAsync()
+    {
+        if (_closingPeriod is null)
+        {
+            _closeOpen = false;
+            return;
+        }
+
+        _closingBusy = true;
+        try
+        {
+            await Api.CloseFiscalPeriodAsync(_closingPeriod.Id);
+            Toast.ShowSuccess($"\"{_closingPeriod.Name}\" is now closed.");
+            _closeOpen = false;
+            _closingPeriod = null;
+            await ReloadAsync();
+        }
+        catch (ApiException ex)
+        {
+            Toast.ShowError(ex.PrimaryError); // 409: already closed / end date not reached.
+        }
+        catch (HttpRequestException)
+        {
+            Toast.ShowError("Could not reach the LedgerLite API. Make sure it is running.");
+        }
+        finally
+        {
+            _closingBusy = false;
+        }
+    }
+}

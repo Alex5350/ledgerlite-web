@@ -1,0 +1,260 @@
+@page "/login"
+@layout BlankLayout
+@attribute [AllowAnonymous]
+@inject IAuthService AuthService
+@inject IToastService Toast
+@inject NavigationManager Navigation
+
+<PageTitle>Sign in · LedgerLite</PageTitle>
+
+<div class="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
+    @* ---------- Brand panel (hidden on small screens) ---------- *@
+    <div class="relative hidden flex-col justify-between overflow-hidden border-r border-white/[0.07] bg-ink-900/40 p-12 lg:flex">
+        <div class="pointer-events-none absolute -top-32 right-[-15%] h-96 w-96 rounded-full bg-accent-500/10 blur-3xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute bottom-[-25%] left-[-10%] h-96 w-96 rounded-full bg-info-400/10 blur-3xl" aria-hidden="true"></div>
+
+        <a href="/" class="relative flex items-center gap-3 outline-none">
+            <span class="flex size-9 items-center justify-center rounded-lg bg-accent-500 text-ink-950 shadow-[0_0_24px_-4px] shadow-accent-500/60">
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+                    <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+                    <path d="M7 21h10" />
+                    <path d="M12 3v18" />
+                    <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" />
+                </svg>
+            </span>
+            <span class="leading-tight">
+                <span class="block font-display text-base font-semibold tracking-tight text-slate-100">LedgerLite</span>
+                <span class="block text-[11px] text-slate-500">personal ledger</span>
+            </span>
+        </a>
+
+        <div class="relative max-w-md animate-rise">
+            <h1 class="font-display text-4xl leading-tight font-semibold text-slate-100 xl:text-5xl">
+                Your ledger,<br />
+                <span class="text-accent-400">balanced.</span>
+            </h1>
+            <p class="mt-5 text-base leading-relaxed text-slate-400">
+                Double-entry bookkeeping built for one — precise, private, and plain.
+                Post entries, watch the trial balance, and let budgets warn you before you overspend.
+            </p>
+            <ul class="mt-9 flex flex-col gap-5">
+                <li class="flex items-start gap-4">
+                    <span class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.07] bg-white/[0.03] text-accent-400">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+                            <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+                            <path d="M7 21h10" />
+                            <path d="M12 3v18" />
+                            <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" />
+                        </svg>
+                    </span>
+                    <div>
+                        <p class="text-sm font-medium text-slate-200">Double-entry, always</p>
+                        <p class="mt-1 text-sm leading-relaxed text-slate-500">Every entry is validated against debits-equal-credits before it posts.</p>
+                    </div>
+                </li>
+                <li class="flex items-start gap-4">
+                    <span class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.07] bg-white/[0.03] text-accent-400">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M21 12a9 9 0 1 1-9-9" />
+                            <path d="M21 3v9h-9" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                    </span>
+                    <div>
+                        <p class="text-sm font-medium text-slate-200">Trial balance in real time</p>
+                        <p class="mt-1 text-sm leading-relaxed text-slate-500">Per-account totals update with every posted entry — no spreadsheets.</p>
+                    </div>
+                </li>
+                <li class="flex items-start gap-4">
+                    <span class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.07] bg-white/[0.03] text-accent-400">
+                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10" />
+                            <circle cx="12" cy="12" r="6" />
+                            <circle cx="12" cy="12" r="2" />
+                        </svg>
+                    </span>
+                    <div>
+                        <p class="text-sm font-medium text-slate-200">Budgets that warn you</p>
+                        <p class="mt-1 text-sm leading-relaxed text-slate-500">Threshold alerts at 80% and 100% keep spending honest.</p>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <p class="relative font-mono text-[11px] tracking-[0.2em] text-slate-600 uppercase">LedgerLite · personal ledger terminal</p>
+    </div>
+
+    @* ---------- Form panel ---------- *@
+    <div class="flex items-center justify-center p-6 sm:p-10">
+        <div class="w-full max-w-md animate-rise" style="animation-delay:60ms">
+            <div class="mb-8 flex items-center gap-3 lg:hidden">
+                <span class="flex size-8 items-center justify-center rounded-lg bg-accent-500 text-ink-950 shadow-[0_0_20px_-4px] shadow-accent-500/60">
+                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 3v18" />
+                        <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" />
+                        <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+                        <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+                        <path d="M7 21h10" />
+                    </svg>
+                </span>
+                <span class="font-display text-base font-semibold text-slate-100">LedgerLite</span>
+            </div>
+
+            <h2 class="font-display text-2xl font-semibold text-slate-100">
+                @(IsRegister ? "Create your account" : "Welcome back")
+            </h2>
+            <p class="mt-1.5 text-sm text-slate-500">
+                @(IsRegister ? "A fresh ledger takes about a minute." : "Sign in to your ledger.")
+            </p>
+
+            <button type="button"
+                    @onclick="UseDemoCredentials"
+                    class="mt-6 flex w-full items-center gap-3 rounded-xl border border-accent-500/25 bg-accent-500/[0.08] px-3.5 py-2.5 text-left transition-colors hover:border-accent-500/40 hover:bg-accent-500/[0.12]">
+                <svg class="size-4 shrink-0 text-accent-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
+                </svg>
+                <span class="min-w-0 flex-1 text-xs leading-relaxed text-slate-400">
+                    Use the demo account<br />
+                    <span class="font-mono text-slate-200">demo&#64;ledgerlite.io / Demo123!</span>
+                </span>
+                <span class="shrink-0 text-[10px] font-semibold tracking-wider text-accent-400 uppercase">Fill</span>
+            </button>
+
+            @if (_error is not null)
+            {
+                <div class="mt-5 flex items-start gap-3 rounded-xl border border-danger-400/25 bg-danger-500/[0.08] px-4 py-3" role="alert">
+                    <svg class="mt-0.5 size-4 shrink-0 text-danger-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 8v4" />
+                        <path d="M12 16h.01" />
+                    </svg>
+                    <p class="text-sm text-danger-400">@_error</p>
+                </div>
+            }
+
+            <form class="mt-6 flex flex-col gap-4" @onsubmit="SubmitAsync" @onsubmit:preventDefault="true" novalidate>
+                @if (IsRegister)
+                {
+                    <Field @bind-Value="_displayName" Label="Display name" Placeholder="Alex Morgan" autocomplete="name" />
+                }
+                <Field @bind-Value="_email" Label="Email" Type="email" Placeholder="you&#64;example.com" autocomplete="email" />
+                <Field @bind-Value="_password" Label="Password" Type="password" Placeholder="••••••••" autocomplete="@(IsRegister ? "new-password" : "current-password")" />
+
+                <Button Type="submit" Variant="ButtonVariant.Primary" Loading="_busy" Class="mt-1 w-full">
+                    @(IsRegister ? "Create account" : "Sign in")
+                </Button>
+            </form>
+
+            <p class="mt-6 text-center text-sm text-slate-500">
+                @(IsRegister ? "Already have an account?" : "New to LedgerLite?")
+                <button type="button"
+                        class="font-medium text-accent-400 outline-none transition-colors hover:text-accent-300"
+                        @onclick="ToggleMode">
+                    @(IsRegister ? "Sign in" : "Create one")
+                </button>
+            </p>
+        </div>
+    </div>
+</div>
+
+@* Once authentication lands (interactive), leave the login screen. *@
+<AuthorizeView>
+    <Authorized>
+        <RedirectTo To="@_returnUrl" />
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private const string DemoEmail = "demo@ledgerlite.io";
+    private const string DemoPassword = "Demo123!";
+
+    private bool _isRegister;
+    private bool _busy;
+    private string? _error;
+    private string _displayName = string.Empty;
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private string _returnUrl = "/";
+
+    private bool IsRegister => _isRegister;
+
+    protected override void OnInitialized() => _returnUrl = ResolveReturnUrl();
+
+    private string ResolveReturnUrl()
+    {
+        string query = new Uri(Navigation.Uri).Query;
+        foreach (string pair in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            string[] keyValue = pair.Split('=', 2);
+            if (keyValue.Length == 2 && keyValue[0] == "returnUrl")
+            {
+                string decoded = Uri.UnescapeDataString(keyValue[1].Replace('+', ' '));
+                if (decoded.StartsWith('/') && !decoded.StartsWith("//", StringComparison.Ordinal))
+                {
+                    return decoded;
+                }
+            }
+        }
+
+        return "/";
+    }
+
+    private void ToggleMode()
+    {
+        _isRegister = !_isRegister;
+        _error = null;
+    }
+
+    private void UseDemoCredentials()
+    {
+        _email = DemoEmail;
+        _password = DemoPassword;
+        _isRegister = false;
+        _error = null;
+    }
+
+    private async Task SubmitAsync()
+    {
+        _error = null;
+
+        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_password)
+            || (_isRegister && string.IsNullOrWhiteSpace(_displayName)))
+        {
+            _error = "Please fill in all fields.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            if (_isRegister)
+            {
+                AuthResult result = await AuthService.RegisterAsync(_email.Trim(), _displayName.Trim(), _password);
+                if (!result.Success)
+                {
+                    _error = result.Error;
+                    return;
+                }
+
+                Toast.ShowSuccess("Account created. Sign in to continue.");
+                _isRegister = false; // Registration does not auto-login; switch to the sign-in form.
+                _password = string.Empty;
+                return;
+            }
+
+            AuthResult loginResult = await AuthService.LoginAsync(_email.Trim(), _password);
+            if (!loginResult.Success)
+            {
+                _error = loginResult.Error;
+            }
+
+            // On success the AuthorizeView above flips to Authorized and redirects.
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

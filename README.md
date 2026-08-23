@@ -9,13 +9,17 @@ A modern Blazor front-end for the [LedgerLite API](https://github.com/Alex5350/l
 double-entry personal ledger with budgets, fiscal periods and a trial balance - built with a
 **hand-crafted Tailwind design system** instead of a stock component kit.
 
-| Login | Overview |
+| Login | Overview dashboard |
 |:---:|:---:|
 | ![Login](docs/screenshots/login.png) | ![Overview](docs/screenshots/overview.png) |
 
-| Post an entry (live balance check) | Budgets |
+| Post an entry (live balance check) | Budgets with threshold alerts |
 |:---:|:---:|
 | ![Journal editor](docs/screenshots/journal-editor.png) | ![Budgets](docs/screenshots/budgets.png) |
+
+| Fiscal periods | Responsive layout (mobile) |
+|:---:|:---:|
+| ![Periods](docs/screenshots/periods.png) | ![Mobile overview](docs/screenshots/overview-mobile.png) |
 
 ## Why this project exists
 

@@ -1,0 +1,243 @@
+@page "/accounts"
+@implements IDisposable
+@inject PeriodState PeriodState
+@inject ILedgerLiteApiClient Api
+@inject IToastService Toast
+
+<PageTitle>Accounts · LedgerLite</PageTitle>
+
+<div class="flex flex-col gap-6">
+    <header class="flex flex-wrap items-center justify-between gap-4 animate-rise">
+        <div>
+            <h1 class="font-display text-2xl font-semibold text-slate-100">Accounts</h1>
+            <p class="mt-1 text-sm text-slate-500">@(PeriodState.CurrentPeriod is { } p ? $"Chart of accounts · {p.Name}" : "Chart of accounts")</p>
+        </div>
+        <Button Variant="ButtonVariant.Primary" Disabled="PeriodState.CurrentPeriod is null" OnClick="OpenCreateModal">
+            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14" />
+                <path d="M12 5v14" />
+            </svg>
+            New account
+        </Button>
+    </header>
+
+    @if (PeriodState.CurrentPeriod is null)
+    {
+        <Card Class="animate-rise" Style="animation-delay:50ms">
+            <EmptyState Title="Select a period first"
+                        Hint="Accounts belong to a fiscal period — pick one in the topbar, or create a new period.">
+                <ActionFragment>
+                    <a href="/periods"
+                       class="text-xs font-medium text-accent-400 outline-none transition-colors hover:text-accent-300">Go to fiscal periods &rarr;</a>
+                </ActionFragment>
+            </EmptyState>
+        </Card>
+    }
+    else if (_isLoading)
+    {
+        <Card Class="animate-rise" Style="animation-delay:50ms">
+            <div class="flex flex-col gap-4">
+                <Skeleton Class="h-10 w-full" />
+                <Skeleton Class="h-10 w-full" />
+                <Skeleton Class="h-10 w-3/4" />
+            </div>
+        </Card>
+    }
+    else if (_error is not null)
+    {
+        <ErrorPanel Message="@_error" Retry="LoadAccountsAsync" />
+    }
+    else if (_accounts.Count == 0)
+    {
+        <Card Class="animate-rise" Style="animation-delay:50ms">
+            <EmptyState Title="No accounts yet"
+                        Hint="Create asset, liability, equity, revenue and expense accounts for this period.">
+                <ActionFragment>
+                    <Button Variant="ButtonVariant.Primary" OnClick="OpenCreateModal">Create the first account</Button>
+                </ActionFragment>
+            </EmptyState>
+        </Card>
+    }
+    else
+    {
+        <Card Flush="true" Class="animate-rise" Style="animation-delay:50ms">
+            <DataTable TItem="AccountResponse" Items="_accounts">
+                <TableHeader>
+                    <th>Number</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                </TableHeader>
+                <Row Context="account">
+                    <td class="font-mono text-sm text-slate-300 tnum">@account.Number</td>
+                    <td class="font-medium text-slate-100">@account.Name</td>
+                    <td><Badge Tone="@TypeTone(account.Type)">@account.Type</Badge></td>
+                </Row>
+            </DataTable>
+        </Card>
+    }
+</div>
+
+@* ---------- Create modal ---------- *@
+<Modal @bind-IsOpen="_createOpen" Title="New account" Subtitle="@(PeriodState.CurrentPeriod is { } period ? $"Added to {period.Name}" : null)">
+    <ChildContent>
+        <div class="flex flex-col gap-4">
+            <Field @bind-Value="_number" Label="Number" Placeholder="1000" InputMode="numeric" Mono="true"
+                   Error="@_numberError" Hint="Exactly four digits, unique within the period." />
+            <Field @bind-Value="_name" Label="Name" Placeholder="e.g. Checking account" Error="@_nameError" />
+            <SelectField @bind-Value="_type" Label="Type" Error="@_typeError">
+                @foreach (AccountType type in Enum.GetValues<AccountType>())
+                {
+                    <option value="@type.ToString()">@type</option>
+                }
+            </SelectField>
+        </div>
+    </ChildContent>
+    <FooterTemplate>
+        <Button Variant="ButtonVariant.Secondary" OnClick="() => _createOpen = false">Cancel</Button>
+        <Button Variant="ButtonVariant.Primary" Loading="_creating" OnClick="CreateAsync">Create account</Button>
+    </FooterTemplate>
+</Modal>
+
+@code {
+    private IReadOnlyList<AccountResponse> _accounts = [];
+    private bool _isLoading = true;
+    private string? _error;
+
+    private bool _createOpen;
+    private bool _creating;
+    private string _number = string.Empty;
+    private string _name = string.Empty;
+    private string _type = nameof(AccountType.Asset);
+    private string? _numberError;
+    private string? _nameError;
+    private string? _typeError;
+
+    protected override void OnInitialized() => PeriodState.Changed += OnPeriodChanged;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!PeriodState.IsLoaded)
+            {
+                await PeriodState.LoadAsync();
+            }
+
+            if (PeriodState.CurrentPeriod is not null)
+            {
+                await LoadAccountsAsync();
+            }
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex is ApiException api ? api.PrimaryError : "Could not reach the LedgerLite API. Make sure it is running.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadAccountsAsync()
+    {
+        if (PeriodState.CurrentPeriod is null)
+        {
+            return;
+        }
+
+        _error = null;
+        _isLoading = true;
+        try
+        {
+            _accounts = await Api.GetAccountsAsync(PeriodState.CurrentPeriod.Id);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex is ApiException api ? api.PrimaryError : "Could not reach the LedgerLite API. Make sure it is running.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnPeriodChanged() => _ = InvokeAsync(LoadAccountsAsync);
+
+    private void OpenCreateModal()
+    {
+        _number = string.Empty;
+        _name = string.Empty;
+        _type = nameof(AccountType.Asset);
+        _numberError = null;
+        _nameError = null;
+        _typeError = null;
+        _createOpen = true;
+    }
+
+    private async Task CreateAsync()
+    {
+        _numberError = null;
+        _nameError = null;
+        _typeError = null;
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(_number.Trim(), @"^\d{4}$"))
+        {
+            _numberError = "The number must be exactly four digits.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _nameError = "Give the account a name.";
+            return;
+        }
+
+        if (!Enum.TryParse<AccountType>(_type, out AccountType parsedType))
+        {
+            _typeError = "Pick an account type.";
+            return;
+        }
+
+        _creating = true;
+        try
+        {
+            await Api.CreateAccountAsync(new CreateAccountRequest(
+                Number: _number.Trim(),
+                Name: _name.Trim(),
+                Type: parsedType,
+                PeriodId: PeriodState.CurrentPeriod!.Id));
+
+            Toast.ShowSuccess($"Account {_number.Trim()} · {_name.Trim()} created.");
+            _createOpen = false;
+            await LoadAccountsAsync();
+        }
+        catch (ApiException ex) when (ex.StatusCode == 409)
+        {
+            _numberError = ex.PrimaryError; // duplicate number within the period
+        }
+        catch (ApiException ex)
+        {
+            _numberError = ex.PrimaryError;
+        }
+        catch (HttpRequestException)
+        {
+            Toast.ShowError("Could not reach the LedgerLite API. Make sure it is running.");
+        }
+        finally
+        {
+            _creating = false;
+        }
+    }
+
+    private static BadgeTone TypeTone(AccountType type) => type switch
+    {
+        AccountType.Asset => BadgeTone.Sky,
+        AccountType.Liability => BadgeTone.Amber,
+        AccountType.Equity => BadgeTone.Violet,
+        AccountType.Revenue => BadgeTone.Emerald,
+        AccountType.Expense => BadgeTone.Red,
+        _ => BadgeTone.Slate
+    };
+
+    public void Dispose() => PeriodState.Changed -= OnPeriodChanged;
+}

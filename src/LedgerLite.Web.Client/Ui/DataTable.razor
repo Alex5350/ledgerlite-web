@@ -1,0 +1,45 @@
+@typeparam TItem where TItem : notnull
+
+@if (Items is not null && Items.Any())
+{
+    <div class="overflow-x-auto">
+        <table class="data-table w-full text-sm">
+            <thead>
+                <tr>
+                    @TableHeader
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+                @foreach (TItem item in Items)
+                {
+                    <tr class="transition-colors hover:bg-white/[0.02]">
+                        @if (Row is not null)
+                        {
+                            @Row(item)
+                        }
+                    </tr>
+                }
+            </tbody>
+            @if (TableFooter is not null)
+            {
+                <tfoot class="border-t border-white/10">
+                    @TableFooter
+                </tfoot>
+            }
+        </table>
+    </div>
+}
+
+@code {
+    /// <summary>Rows to render. Nothing is rendered when null or empty (pair with EmptyState).</summary>
+    [Parameter] public IEnumerable<TItem>? Items { get; set; }
+
+    /// <summary>The &lt;th&gt; cells.</summary>
+    [Parameter] public RenderFragment? TableHeader { get; set; }
+
+    /// <summary>The &lt;td&gt; cells for one item: <c>&lt;Row Context="item"&gt;...&lt;/Row&gt;</c>.</summary>
+    [Parameter] public RenderFragment<TItem>? Row { get; set; }
+
+    /// <summary>Optional &lt;tfoot&gt; content (totals row).</summary>
+    [Parameter] public RenderFragment? TableFooter { get; set; }
+}

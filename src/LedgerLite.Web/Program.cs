@@ -1,3 +1,4 @@
+using LedgerLite.Web.Client;
 using LedgerLite.Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,6 +7,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
+
+// Shared client-side services (API client, token store, auth state provider, auth service).
+builder.Services.AddLedgerLiteClientServices(builder.Configuration);
+// .NET 10: the AddAuthorization() sugar moved to the Microsoft.Extensions.Authorization
+// package; AddAuthorizationCore() registers the same component authorization services.
+builder.Services.AddAuthorizationCore();
 
 var app = builder.Build();
 

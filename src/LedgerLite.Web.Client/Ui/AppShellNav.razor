@@ -1,0 +1,88 @@
+@implements IDisposable
+@inject NavigationManager Navigation
+
+<nav class="@Class" aria-label="Primary">
+    <p class="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Ledger</p>
+    <div class="flex flex-col gap-0.5">
+        @foreach (NavigationLink link in Links)
+        {
+            bool active = IsActive(link);
+            <a href="@link.Href"
+               aria-current="@(active ? "page" : null)"
+               class="group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150 @(active
+                   ? "bg-white/[0.04] text-accent-400"
+                   : "text-slate-400 hover:bg-white/[0.03] hover:text-slate-200")">
+                @if (active)
+                {
+                    <span class="absolute top-1/2 left-0 h-5 w-[2px] -translate-y-1/2 rounded-full bg-accent-400 shadow-[0_0_12px_2px] shadow-accent-500/50" aria-hidden="true"></span>
+                }
+                <svg class="size-4 shrink-0 @(active ? "text-accent-400" : "text-slate-500 transition-colors group-hover:text-slate-300")"
+                     viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    @((MarkupString)link.IconSvg)
+                </svg>
+                @link.Label
+            </a>
+        }
+    </div>
+</nav>
+
+<div class="mt-6 rounded-card border border-white/[0.07] bg-white/[0.03] p-3.5">
+    <div class="flex items-center gap-2">
+        <svg class="size-3.5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 18h20" />
+            <path d="M4 18V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10" />
+            <path d="M2 22h20" />
+        </svg>
+        <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Demo access</p>
+    </div>
+    <p class="mt-2.5 font-mono text-xs text-slate-300">demo&#64;ledgerlite.io</p>
+    <p class="font-mono text-xs text-slate-500">Demo123!</p>
+    <p class="mt-2.5 text-[11px] leading-relaxed text-slate-500">
+        Sign in with the shared demo account or create your own. Logins are rate-limited.
+    </p>
+</div>
+
+@code {
+    /// <summary>Classes for the &lt;nav&gt; wrapper (layout differs desktop vs mobile).</summary>
+    [Parameter] public string Class { get; set; } = string.Empty;
+
+    private static readonly NavigationLink[] Links =
+    [
+        new("/", "Overview",
+            """<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>"""),
+        new("/periods", "Fiscal Periods",
+            """<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>"""),
+        new("/accounts", "Accounts",
+            """<line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/>"""),
+        new("/journal", "Journal",
+            """<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>"""),
+        new("/budgets", "Budgets",
+            """<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>"""),
+        new("/reports/trial-balance", "Trial Balance",
+            """<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>""")
+    ];
+
+    private string _currentPath = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        _currentPath = new Uri(Navigation.Uri).AbsolutePath;
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        _currentPath = new Uri(args.Location).AbsolutePath;
+        StateHasChanged();
+    }
+
+    private bool IsActive(NavigationLink link) =>
+        link.Href == "/"
+            ? string.Equals(_currentPath, "/", StringComparison.Ordinal)
+            : string.Equals(_currentPath, link.Href, StringComparison.Ordinal)
+                || _currentPath.StartsWith(link.Href + "/", StringComparison.Ordinal);
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+
+    private sealed record NavigationLink(string Href, string Label, string IconSvg);
+}

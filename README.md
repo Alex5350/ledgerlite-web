@@ -11,15 +11,15 @@ double-entry personal ledger with budgets, fiscal periods and a trial balance - 
 
 | Login | Overview dashboard |
 |:---:|:---:|
-| ![Login](docs/screenshots/login.png) | ![Overview](docs/screenshots/overview.png) |
+| ![Login](docs/screenshots/shot-login.png) | ![Overview](docs/screenshots/shot-overview.png) |
 
 | Post an entry (live balance check) | Budgets with threshold alerts |
 |:---:|:---:|
-| ![Journal editor](docs/screenshots/journal-editor.png) | ![Budgets](docs/screenshots/budgets.png) |
+| ![Journal editor](docs/screenshots/shot-journal-editor.png) | ![Budgets](docs/screenshots/shot-budgets.png) |
 
 | Fiscal periods | Responsive layout (mobile) |
 |:---:|:---:|
-| ![Periods](docs/screenshots/periods.png) | ![Mobile overview](docs/screenshots/overview-mobile.png) |
+| ![Periods](docs/screenshots/shot-periods.png) | ![Mobile overview](docs/screenshots/shot-overview-mobile.png) |
 
 ## Why this project exists
 

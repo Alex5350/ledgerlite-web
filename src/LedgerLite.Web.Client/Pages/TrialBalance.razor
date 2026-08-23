@@ -1,0 +1,180 @@
+@page "/reports/trial-balance"
+@implements IDisposable
+@inject PeriodState PeriodState
+@inject ILedgerLiteApiClient Api
+
+<PageTitle>Trial Balance · LedgerLite</PageTitle>
+
+<div class="flex flex-col gap-6">
+    <header class="flex flex-wrap items-center justify-between gap-4 animate-rise">
+        <div>
+            <div class="flex flex-wrap items-center gap-3">
+                <h1 class="font-display text-2xl font-semibold text-slate-100">Trial balance</h1>
+                @if (_balance is not null)
+                {
+                    if (_balance.IsBalanced)
+                    {
+                        <Badge Tone="BadgeTone.Emerald"><span class="size-1.5 rounded-full bg-accent-400"></span>Balanced</Badge>
+                    }
+                    else
+                    {
+                        <Badge Tone="BadgeTone.Red"><span class="size-1.5 rounded-full bg-danger-400"></span>Out of balance</Badge>
+                    }
+                }
+            </div>
+            <p class="mt-1 text-sm text-slate-500">
+                @(PeriodState.CurrentPeriod is { } p
+                    ? $"Per-account totals of posted entries · {p.Name}"
+                    : "Per-account totals of posted entries")
+            </p>
+        </div>
+        <a href="/journal"
+           class="text-xs font-medium text-accent-400 outline-none transition-colors hover:text-accent-300">Open journal &rarr;</a>
+    </header>
+
+    @if (PeriodState.CurrentPeriod is null)
+    {
+        <Card Class="animate-rise" Style="animation-delay:50ms">
+            <EmptyState Title="Select a period first"
+                        Hint="The trial balance is computed per fiscal period — pick one in the topbar, or create a new period.">
+                <ActionFragment>
+                    <a href="/periods"
+                       class="text-xs font-medium text-accent-400 outline-none transition-colors hover:text-accent-300">Go to fiscal periods &rarr;</a>
+                </ActionFragment>
+            </EmptyState>
+        </Card>
+    }
+    else if (_isLoading)
+    {
+        <Card Class="animate-rise" Style="animation-delay:50ms">
+            <div class="flex flex-col gap-4">
+                <Skeleton Class="h-10 w-full" />
+                <Skeleton Class="h-10 w-full" />
+                <Skeleton Class="h-10 w-full" />
+                <Skeleton Class="h-10 w-5/6" />
+                <Skeleton Class="h-12 w-full" />
+            </div>
+        </Card>
+    }
+    else if (_error is not null)
+    {
+        <ErrorPanel Message="@_error" Retry="LoadBalanceAsync" />
+    }
+    else if (_balance is null || _balance.Lines.Count == 0)
+    {
+        <Card Class="animate-rise" Style="animation-delay:50ms">
+            <EmptyState Title="No posted entries"
+                        Hint="The trial balance fills in as soon as journal entries are posted to this period.">
+                <ActionFragment>
+                    <a href="/journal"
+                       class="text-xs font-medium text-accent-400 outline-none transition-colors hover:text-accent-300">Post an entry &rarr;</a>
+                </ActionFragment>
+            </EmptyState>
+        </Card>
+    }
+    else
+    {
+        <Card Flush="true" Class="animate-rise" Style="animation-delay:50ms">
+            <DataTable TItem="TrialBalanceLine" Items="_balance.Lines">
+                <TableHeader>
+                    <th>Number</th>
+                    <th>Account</th>
+                    <th>Type</th>
+                    <th class="text-right">Debits</th>
+                    <th class="text-right">Credits</th>
+                    <th class="text-right">Balance</th>
+                </TableHeader>
+                <Row Context="line">
+                    <td class="font-mono text-sm text-slate-400 tnum">@line.AccountNumber</td>
+                    <td class="font-medium text-slate-100">@line.AccountName</td>
+                    <td><Badge Tone="@TypeTone(line.AccountType)">@line.AccountType</Badge></td>
+                    <td class="text-right font-mono tnum text-slate-400">@(line.TotalDebits == 0 ? "—" : Format.Money(line.TotalDebits))</td>
+                    <td class="text-right font-mono tnum text-slate-400">@(line.TotalCredits == 0 ? "—" : Format.Money(line.TotalCredits))</td>
+                    <td class="text-right font-mono tnum font-semibold @(line.Balance < 0 ? "text-danger-400" : "text-slate-100")">@Format.Money(line.Balance)</td>
+                </Row>
+                <TableFooter>
+                    <tr>
+                        <td colspan="3" class="font-display text-xs font-semibold tracking-wider text-slate-500 uppercase">Totals</td>
+                        <td class="text-right font-mono tnum font-semibold text-slate-100">@Format.Money(_balance.TotalDebits)</td>
+                        <td class="text-right font-mono tnum font-semibold text-slate-100">@Format.Money(_balance.TotalCredits)</td>
+                        <td class="text-right font-mono tnum font-semibold @(_balance.IsBalanced ? "text-accent-400" : "text-danger-400")">
+                            @(_balance.IsBalanced ? "Balanced" : Format.Money(_balance.TotalDebits - _balance.TotalCredits))
+                        </td>
+                    </tr>
+                </TableFooter>
+            </DataTable>
+        </Card>
+        <p class="font-mono text-[11px] text-slate-600 tnum">
+            @_balance.Lines.Count accounts · debits @Format.Money(_balance.TotalDebits) · credits @Format.Money(_balance.TotalCredits)
+        </p>
+    }
+</div>
+
+@code {
+    private TrialBalanceResponse? _balance;
+    private bool _isLoading = true;
+    private string? _error;
+
+    protected override void OnInitialized() => PeriodState.Changed += OnPeriodChanged;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!PeriodState.IsLoaded)
+            {
+                await PeriodState.LoadAsync();
+            }
+
+            if (PeriodState.CurrentPeriod is not null)
+            {
+                await LoadBalanceAsync();
+            }
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex is ApiException api ? api.PrimaryError : "Could not reach the LedgerLite API. Make sure it is running.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadBalanceAsync()
+    {
+        if (PeriodState.CurrentPeriod is null)
+        {
+            return;
+        }
+
+        _error = null;
+        _isLoading = true;
+        try
+        {
+            _balance = await Api.GetTrialBalanceAsync(PeriodState.CurrentPeriod.Id);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex is ApiException api ? api.PrimaryError : "Could not reach the LedgerLite API. Make sure it is running.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnPeriodChanged() => _ = InvokeAsync(LoadBalanceAsync);
+
+    private static BadgeTone TypeTone(AccountType type) => type switch
+    {
+        AccountType.Asset => BadgeTone.Sky,
+        AccountType.Liability => BadgeTone.Amber,
+        AccountType.Equity => BadgeTone.Violet,
+        AccountType.Revenue => BadgeTone.Emerald,
+        AccountType.Expense => BadgeTone.Red,
+        _ => BadgeTone.Slate
+    };
+
+    public void Dispose() => PeriodState.Changed -= OnPeriodChanged;
+}

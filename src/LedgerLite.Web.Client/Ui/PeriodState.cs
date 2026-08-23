@@ -41,39 +41,31 @@ public sealed class PeriodState(ILedgerLiteApiClient apiClient, IJSRuntime jsRun
     /// </summary>
     public Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        Task load;
         lock (_gate)
         {
-            _loadTask ??= LoadInternalAsync(cancellationToken);
-            load = _loadTask;
-        }
+            // A failed load must not be cached forever: share only in-flight/successful
+            // loads and retry after a fault or cancellation. The status check also covers
+            // clients that throw synchronously — LoadInternalAsync would complete (and any
+            // reset run) before the assignment below stores the faulted task.
+            if (_loadTask is null or { IsFaulted: true } or { IsCanceled: true })
+            {
+                _loadTask = LoadInternalAsync(cancellationToken);
+            }
 
-        return load;
+            return _loadTask;
+        }
     }
 
     private async Task LoadInternalAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            var periods = await apiClient.GetFiscalPeriodsAsync(cancellationToken);
-            var storedId = await TryReadStoredPeriodIdAsync(cancellationToken);
+        var periods = await apiClient.GetFiscalPeriodsAsync(cancellationToken);
+        var storedId = await TryReadStoredPeriodIdAsync(cancellationToken);
 
-            Periods = periods;
-            CurrentPeriod = periods.FirstOrDefault(period => period.Id == storedId)
-                ?? periods.FirstOrDefault(period => period.Status == FiscalPeriodStatus.Open)
-                ?? periods.FirstOrDefault();
-            IsLoaded = true;
-        }
-        catch
-        {
-            // Allow a later LoadAsync call to retry instead of caching the failure forever.
-            lock (_gate)
-            {
-                _loadTask = null;
-            }
-
-            throw;
-        }
+        Periods = periods;
+        CurrentPeriod = periods.FirstOrDefault(period => period.Id == storedId)
+            ?? periods.FirstOrDefault(period => period.Status == FiscalPeriodStatus.Open)
+            ?? periods.FirstOrDefault();
+        IsLoaded = true;
     }
 
     /// <summary>Selects a period, persists the choice and raises <see cref="Changed"/>.</summary>

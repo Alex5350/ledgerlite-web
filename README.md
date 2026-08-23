@@ -17,6 +17,16 @@ double-entry personal ledger with budgets, fiscal periods and a trial balance - 
 |:---:|:---:|
 | ![Journal editor](docs/screenshots/journal-editor.png) | ![Budgets](docs/screenshots/budgets.png) |
 
+## Why this project exists
+
+LedgerLite Web is a **personal reference application** - a deliberate, self-contained
+exercise in building a production-shaped Blazor front-end against a real API: Interactive
+Auto across both hosting models, a hand-built component kit instead of a third-party one,
+JWT authentication wired end to end, and tests at every layer. It pairs with the
+[LedgerLite API](https://github.com/Alex5350/ledgerlite) so the two repositories together
+form a full-stack .NET 10 solution; the backend is included here unchanged for a
+clone-and-run experience.
+
 ## What this project demonstrates
 
 - **Blazor Web App with Interactive Auto render mode** - pages render as static SSR, then go

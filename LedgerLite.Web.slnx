@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LedgerLite.Api/LedgerLite.Api.csproj" />
+    <Project Path="src/LedgerLite.Application/LedgerLite.Application.csproj" />
+    <Project Path="src/LedgerLite.Domain/LedgerLite.Domain.csproj" />
+    <Project Path="src/LedgerLite.Infrastructure/LedgerLite.Infrastructure.csproj" />
+    <Project Path="src/LedgerLite.Web.Client/LedgerLite.Web.Client.csproj" />
+    <Project Path="src/LedgerLite.Web/LedgerLite.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LedgerLite.Api.IntegrationTests/LedgerLite.Api.IntegrationTests.csproj" />
+    <Project Path="tests/LedgerLite.Application.UnitTests/LedgerLite.Application.UnitTests.csproj" />
+    <Project Path="tests/LedgerLite.Domain.UnitTests/LedgerLite.Domain.UnitTests.csproj" />
+  </Folder>
+</Solution>

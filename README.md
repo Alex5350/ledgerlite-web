@@ -55,8 +55,24 @@ dotnet run --project src/LedgerLite.Web
 ```
 
 Sign in with the seeded demo account: **`demo@ledgerlite.io` / `Demo123!`** (or create your own).
-The login page has a one-click chip that fills the demo credentials.
+The login page has a one-click chip that fills the demo credentials. You should land on the
+Overview dashboard with the seeded "January 2026" period already selected.
 
+<details>
+<summary><strong>Troubleshooting</strong></summary>
+
+- **"Could not reach the LedgerLite API"** - start the API (terminal 1) before using the UI;
+  the message also appears if the API crashed. The UI expects it at `http://localhost:5080`
+  (`Api:BaseUrl` in `src/LedgerLite.Web/appsettings.json`).
+- **"Too many requests" on login** - logins are rate-limited to 5 per minute per IP on the
+  API side. Wait a minute and try again.
+- **Ports in use** - the API defaults to 5080 and the UI to 5010. Override with
+  `ASPNETCORE_URLS` (and `Api__BaseUrl` for where the UI finds the API); both are also
+  configurable in `appsettings.json`.
+- **Styles changed but nothing happened** - the compiled stylesheet is a build artifact:
+  run `npm run build:css` (see below).
+
+</details>
 
 > The backend is the LedgerLite REST API - DDD/Clean Architecture, JWT-secured minimal APIs,
 > 262 backend tests. Its full documentation and history live at

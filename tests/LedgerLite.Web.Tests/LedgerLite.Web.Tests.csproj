@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- xUnit1051 asks for TestContext.Current.CancellationToken, which does not compose
+         with NSubstitute's Arg.Any<CancellationToken>() matching used throughout these tests. -->
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+    <!-- xunit.v3 test applications are executables driven by Microsoft.Testing.Platform. -->
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Latest stable bunit.web on NuGet (verified: no 2.x line exists; 1.40.0 is current).
+         AngleSharp is pinned to the lowest patched release line because bunit's transitive
+         1.2.0 has a known moderate-severity advisory (GHSA-pgww-w46g-26qg / NU1902). -->
+    <PackageReference Include="AngleSharp" Version="1.5.2" />
+    <PackageReference Include="bunit.web" Version="1.40.0" />
+    <!-- AuthorizeView needs the authorization services (the real apps call AddAuthorization). -->
+    <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="10.0.11" />
+    <PackageReference Include="NSubstitute" Version="6.2.0" />
+    <PackageReference Include="xunit.v3" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LedgerLite.Web.Client\LedgerLite.Web.Client.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -11,5 +11,6 @@
     <Project Path="tests/LedgerLite.Api.IntegrationTests/LedgerLite.Api.IntegrationTests.csproj" />
     <Project Path="tests/LedgerLite.Application.UnitTests/LedgerLite.Application.UnitTests.csproj" />
     <Project Path="tests/LedgerLite.Domain.UnitTests/LedgerLite.Domain.UnitTests.csproj" />
+    <Project Path="tests/LedgerLite.Web.Tests/LedgerLite.Web.Tests.csproj" />
   </Folder>
 </Solution>

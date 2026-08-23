@@ -1,0 +1,97 @@
+@if (IsOpen)
+{
+    <div class="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="@Title">
+        <div class="animate-fade fixed inset-0 bg-black/60 backdrop-blur-sm" @onclick="CloseAsync"></div>
+        <div class="fixed inset-0 overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-4">
+                <div @ref="_panel"
+                     tabindex="-1"
+                     @onkeydown="OnKeyDownAsync"
+                     class="card-surface outline-none w-full max-w-lg animate-rise">
+                    <div class="flex items-start justify-between gap-4 border-b border-white/[0.07] px-5 py-4">
+                        <div class="min-w-0">
+                            <h2 class="font-display text-base font-semibold text-slate-100">@Title</h2>
+                            @if (!string.IsNullOrWhiteSpace(Subtitle))
+                            {
+                                <p class="mt-0.5 text-xs text-slate-500">@Subtitle</p>
+                            }
+                        </div>
+                        <button type="button"
+                                class="rounded-lg p-1.5 text-slate-500 outline-none transition-colors hover:bg-white/5 hover:text-slate-200"
+                                aria-label="Close dialog"
+                                @onclick="CloseAsync">
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M18 6 6 18" />
+                                <path d="m6 6 12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="px-5 py-5">
+                        @ChildContent
+                    </div>
+                    @if (FooterTemplate is not null)
+                    {
+                        <div class="flex flex-wrap justify-end gap-3 border-t border-white/[0.07] px-5 py-4">
+                            @FooterTemplate
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>Whether the dialog is shown (two-way bindable: <c>@bind-IsOpen</c>).</summary>
+    [Parameter] public bool IsOpen { get; set; }
+
+    /// <summary>Raised with false when the dialog requests to close (overlay, X, Escape).</summary>
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    /// <summary>Dialog title.</summary>
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    /// <summary>Muted line under the title.</summary>
+    [Parameter] public string? Subtitle { get; set; }
+
+    /// <summary>Dialog body.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Footer content, typically buttons.</summary>
+    [Parameter] public RenderFragment? FooterTemplate { get; set; }
+
+    private ElementReference _panel;
+    private bool _wasOpen;
+
+    // Focus is only requested after an interactive render (never during static prerender,
+    // where JS interop is unavailable), so this stays prerender-safe.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen && !_wasOpen)
+        {
+            _wasOpen = true;
+            try
+            {
+                await _panel.FocusAsync();
+            }
+            catch (Exception ex) when (ex is JSDisconnectedException or ObjectDisposedException)
+            {
+                // Circuit dropped mid-open: nothing to focus.
+            }
+        }
+        else if (!IsOpen)
+        {
+            _wasOpen = false;
+        }
+    }
+
+    private async Task CloseAsync() => await IsOpenChanged.InvokeAsync(false);
+
+    private async Task OnKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key is "Escape" or "Esc")
+        {
+            await CloseAsync();
+        }
+    }
+}

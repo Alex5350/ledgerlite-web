@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+/*
+  LedgerLite.Web design tokens.
+  Aesthetic: "private-bank terminal" — deep ink surfaces, emerald accents,
+  tabular numerals. Rebuild the compiled stylesheet after editing:
+      npm run build:css
+*/
+@theme {
+    --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+    --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+    /* Ink surfaces (page -> panel -> card -> border) */
+    --color-ink-950: #070b10;
+    --color-ink-900: #0b1118;
+    --color-ink-850: #0e1620;
+    --color-ink-800: #121c29;
+    --color-ink-700: #1b2737;
+    --color-ink-600: #2a3950;
+
+    /* Ledger accent (emerald) + semantics */
+    --color-accent-300: #6ee7b7;
+    --color-accent-400: #34d399;
+    --color-accent-500: #10b981;
+    --color-accent-600: #059669;
+    --color-warn-400: #fbbf24;
+    --color-warn-500: #d97706;
+    --color-danger-400: #f87171;
+    --color-danger-500: #ef4444;
+    --color-info-400: #38bdf8;
+
+    --radius-card: 0.875rem;
+
+    --animate-rise: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    --animate-fade: fade 0.3s ease-out both;
+
+    @keyframes rise {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fade {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+}
+
+@layer base {
+    html {
+        color-scheme: dark;
+    }
+
+    body {
+        @apply bg-ink-950 text-slate-200 font-sans antialiased;
+        background-image:
+            radial-gradient(60rem 32rem at 85% -10%, rgb(16 185 129 / 0.07), transparent 60%),
+            radial-gradient(50rem 30rem at -10% 110%, rgb(56 189 248 / 0.05), transparent 60%);
+        background-attachment: fixed;
+    }
+
+    ::selection {
+        @apply bg-accent-500/30 text-white;
+    }
+
+    /* Slim, unobtrusive scrollbars for the terminal feel */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-ink-600) transparent;
+    }
+}
+
+@utility tnum {
+    font-variant-numeric: tabular-nums;
+}
+
+@utility card-surface {
+    @apply rounded-card border border-white/[0.07] bg-ink-900/80 shadow-[0_1px_0_0_rgb(255_255_255/0.04)_inset,0_8px_24px_-12px_rgb(0_0_0/0.6)] backdrop-blur-sm;
+}
+
+/* ----- Ui.DataTable cell rhythm (pages emit plain <th>/<td>) ----- */
+@layer components {
+    .data-table th {
+        @apply px-3 py-2.5 text-left text-xs font-medium tracking-wider text-slate-500 uppercase;
+    }
+
+    .data-table td {
+        @apply px-3 py-3 align-middle;
+    }
+
+    .data-table th:first-child,
+    .data-table td:first-child {
+        @apply pl-5;
+    }
+
+    .data-table th:last-child,
+    .data-table td:last-child {
+        @apply pr-5;
+    }
+
+    .data-table tfoot td {
+        @apply py-3.5;
+    }
+}
+
+/* ----- Blazor fatal-circuit banner (element lives in App.razor) ----- */
+@layer components {
+    #blazor-error-ui {
+        @apply fixed bottom-4 left-1/2 z-[100] hidden -translate-x-1/2 rounded-lg border border-danger-400/30 bg-ink-900/95 px-4 py-3 text-sm text-danger-400 shadow-lg backdrop-blur;
+    }
+
+    #blazor-error-ui .reload {
+        @apply font-medium text-accent-400 underline;
+    }
+
+    #blazor-error-ui .dismiss {
+        @apply pl-2 text-slate-500 underline;
+        cursor: pointer;
+    }
+}

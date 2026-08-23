@@ -12,3 +12,6 @@ TestResults/
 coverage/
 artifacts/
 .DS_Store
+
+# Tailwind toolchain
+node_modules/

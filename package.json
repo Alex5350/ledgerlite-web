@@ -1,0 +1,23 @@
+{
+  "name": "ledgerlite.web",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:css": "tailwindcss -i src/LedgerLite.Web/wwwroot/tailwind.css -o src/LedgerLite.Web/wwwroot/app.css --minify",
+    "watch:css": "tailwindcss -i src/LedgerLite.Web/wwwroot/tailwind.css -o src/LedgerLite.Web/wwwroot/app.css --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  }
+}

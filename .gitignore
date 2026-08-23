@@ -15,3 +15,6 @@ artifacts/
 
 # Tailwind toolchain
 node_modules/
+
+# Guard against global gitignore patterns (e.g. *local*) swallowing source files
+!**/LocalStorageTokenStore.cs

@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Lets the unit test project cover internal members such as
+         DecimalPrecisionExtensions.HasMoreThanTwoDecimalPlaces. -->
+    <InternalsVisibleTo Include="LedgerLite.Domain.UnitTests" />
+  </ItemGroup>
+
+</Project>

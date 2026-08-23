@@ -1,6 +1,7 @@
 using System.Net.Http;
 using LedgerLite.Web.Client.Services.Api;
 using LedgerLite.Web.Client.Services.Auth;
+using LedgerLite.Web.Client.Ui;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +49,9 @@ public static class LedgerLiteClientServices
             serviceProvider.GetRequiredService<JwtAuthenticationStateProvider>());
         services.TryAddScoped<IAuthService, AuthService>();
 
+        // UI state: selected fiscal period (topbar selector + pages) and toasts.
+        services.TryAddScoped<PeriodState>();
+        services.TryAddScoped<IToastService, ToastService>();
         services.TryAddScoped<ILedgerLiteApiClient>(serviceProvider =>
         {
             var bearerHandler = serviceProvider.GetRequiredService<BearerTokenHandler>();

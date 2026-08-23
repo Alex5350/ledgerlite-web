@@ -68,6 +68,16 @@ Sign in with the seeded demo account: **`demo@ledgerlite.io` / `Demo123!`** (or 
 The login page has a one-click chip that fills the demo credentials. You should land on the
 Overview dashboard with the seeded "January 2026" period already selected.
 
+### Docker
+
+The root `Dockerfile` builds the **backend API** container (the imported LedgerLite
+API - see its [repository](https://github.com/Alex5350/ledgerlite) for deployment notes).
+The Blazor UI is intended for `dotnet run` during development:
+
+```bash
+docker build -t ledgerlite-api . && docker run -p 5080:8080 ledgerlite-api
+```
+
 <details>
 <summary><strong>Troubleshooting</strong></summary>
 

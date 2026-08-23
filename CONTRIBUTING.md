@@ -6,13 +6,13 @@ engineering practices, so contributions are expected to follow the same standard
 ## Getting set up
 
 ```bash
-git clone https://github.com/Alex5350/ledgerlite.git
-cd ledgerlite
+git clone https://github.com/Alex5350/ledgerlite-web.git
+cd ledgerlite-web
 dotnet build          # must succeed with zero warnings
 dotnet test           # must pass (262 tests, no setup required)
 ```
 
-Requirements: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) - the repository
+Requirements: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0); the repository
 pins the SDK version with `global.json`.
 
 ## Ground rules
@@ -35,8 +35,8 @@ pins the SDK version with `global.json`.
 ## Workflow
 
 - Branch from `main` using a descriptive name (`feat/budget-rollover`, `fix/trial-balance-totals`).
-- Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) -
-  `feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:` - with a body explaining *why* when
+- Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
+  (`feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`) with a body explaining *why* when
   the change isn't obvious.
 - Keep commits focused; a reviewer should be able to describe each one from its diff alone.
 - CI (`.github/workflows/ci.yml`) must be green before merge.

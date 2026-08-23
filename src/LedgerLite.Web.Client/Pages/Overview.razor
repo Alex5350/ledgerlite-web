@@ -1,0 +1,313 @@
+@page "/"
+@implements IDisposable
+@inject PeriodState PeriodState
+@inject ILedgerLiteApiClient Api
+
+<PageTitle>Overview · LedgerLite</PageTitle>
+
+<div class="flex flex-col gap-8">
+    <header class="animate-rise">
+        <h1 class="font-display text-2xl font-semibold text-slate-100">Overview</h1>
+        <p class="mt-1 text-sm text-slate-500">
+            @(PeriodState.CurrentPeriod is { } period
+                ? $"{period.Name} · {Format.Date(period.StartDate)} — {Format.Date(period.EndDate)}"
+                : "No fiscal period selected")
+        </p>
+    </header>
+
+    @if (_error is not null)
+    {
+        <ErrorPanel Message="@_error" Retry="LoadDataAsync" />
+    }
+    else if (PeriodState.CurrentPeriod is null)
+    {
+        <Card Class="animate-rise" Style="animation-delay:60ms">
+            @if (_isLoading)
+            {
+                <div class="flex flex-col gap-3">
+                    <Skeleton Class="h-3 w-32" />
+                    <Skeleton Class="h-4 w-64" />
+                    <Skeleton Class="h-4 w-48" />
+                </div>
+            }
+            else
+            {
+                <EmptyState Title="No fiscal period yet"
+                            Hint="Create your first fiscal period to start posting entries.">
+                    <ActionFragment>
+                        <a href="/periods"
+                           class="inline-flex items-center gap-2 rounded-lg bg-accent-500 px-4 py-2 text-sm font-medium text-ink-950 shadow-lg shadow-accent-500/25 transition-all hover:bg-accent-400">
+                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M5 12h14" />
+                                <path d="M12 5v14" />
+                            </svg>
+                            Create a period
+                        </a>
+                    </ActionFragment>
+                </EmptyState>
+            }
+        </Card>
+    }
+    else if (_isLoading)
+    {
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            @for (int index = 0; index < 4; index++)
+            {
+                <div @key="index" class="card-surface flex flex-col gap-3 p-5">
+                    <Skeleton Class="h-3 w-20" />
+                    <Skeleton Class="h-8 w-28" />
+                </div>
+            }
+        </div>
+        <div class="grid gap-6 lg:grid-cols-2">
+            <div class="card-surface space-y-3 p-5"><Skeleton Class="h-3 w-36" /><Skeleton Class="h-10 w-full" /><Skeleton Class="h-10 w-full" /><Skeleton Class="h-10 w-3/4" /></div>
+            <div class="card-surface space-y-3 p-5"><Skeleton Class="h-3 w-24" /><Skeleton Class="h-6 w-full" /><Skeleton Class="h-6 w-full" /><Skeleton Class="h-6 w-2/3" /></div>
+        </div>
+    }
+    else
+    {
+        @* ---------- Stat cards ---------- *@
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard Label="Total debits"
+                      Value="@Format.Money(_trialBalance?.TotalDebits ?? 0)"
+                      Tone="StatTone.Neutral"
+                      Delta="@($"{_debitLineCount} debit lines posted")"
+                      Class="animate-rise">
+                <IconFragment>
+                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 5v14" />
+                        <path d="m19 12-7 7-7-7" />
+                    </svg>
+                </IconFragment>
+            </StatCard>
+            <StatCard Label="Total credits"
+                      Value="@Format.Money(_trialBalance?.TotalCredits ?? 0)"
+                      Tone="StatTone.Emerald"
+                      Delta="@($"{_creditLineCount} credit lines posted")"
+                      Class="animate-rise"
+                      Style="animation-delay:50ms">
+                <IconFragment>
+                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 19V5" />
+                        <path d="m5 12 7-7 7 7" />
+                    </svg>
+                </IconFragment>
+            </StatCard>
+            <StatCard Label="Balance status"
+                      Value="@(_trialBalance is { IsBalanced: true } ? "Balanced" : "Out of balance")"
+                      Tone="@(_trialBalance is { IsBalanced: true } ? StatTone.Emerald : StatTone.Red)"
+                      Delta="@(_trialBalance is { IsBalanced: true } ? "Debits equal credits" : $"Off by {Format.Money(Math.Abs((_trialBalance?.TotalDebits ?? 0) - (_trialBalance?.TotalCredits ?? 0)))}")"
+                      DeltaTone="@(_trialBalance is { IsBalanced: true } ? StatTone.Emerald : StatTone.Red)"
+                      Class="animate-rise"
+                      Style="animation-delay:100ms">
+                <IconFragment>
+                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+                        <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+                        <path d="M7 21h10" />
+                        <path d="M12 3v18" />
+                    </svg>
+                </IconFragment>
+            </StatCard>
+            <StatCard Label="Budgets at risk"
+                      Value="@($"{_budgetsAtRisk} of {_budgets.Count}")"
+                      Tone="@(_budgetsAtRisk > 0 ? StatTone.Amber : StatTone.Emerald)"
+                      Delta="@(_budgetsAtRisk > 0 ? "Thresholds exceeded — review budgets" : "All budgets within limits")"
+                      DeltaTone="@(_budgetsAtRisk > 0 ? StatTone.Amber : StatTone.Emerald)"
+                      Class="animate-rise"
+                      Style="animation-delay:150ms">
+                <IconFragment>
+                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" />
+                        <circle cx="12" cy="12" r="6" />
+                        <circle cx="12" cy="12" r="2" />
+                    </svg>
+                </IconFragment>
+            </StatCard>
+        </div>
+
+        @* ---------- Trial balance + budgets ---------- *@
+        <div class="grid gap-6 lg:grid-cols-2">
+            <section class="flex flex-col gap-4 animate-rise" style="animation-delay:200ms">
+                <SectionHeader Title="Trial balance">
+                    <ActionFragment>
+                        <a href="/reports/trial-balance" class="text-xs font-medium text-accent-400 outline-none transition-colors hover:text-accent-300">Full report &rarr;</a>
+                    </ActionFragment>
+                </SectionHeader>
+                <Card Flush="true">
+                    @if (_topAccounts.Count == 0)
+                    {
+                        <EmptyState Title="No posted entries" Hint="Post a journal entry to see account totals here." />
+                    }
+                    else
+                    {
+                        <DataTable TItem="TrialBalanceLine" Items="_topAccounts">
+                            <TableHeader>
+                                <th>Account</th>
+                                <th>Type</th>
+                                <th class="text-right">Balance</th>
+                            </TableHeader>
+                            <Row Context="line">
+                                <td>
+                                    <span class="font-mono text-xs text-slate-500 tnum">@line.AccountNumber</span>
+                                    <span class="ml-2 text-slate-200">@line.AccountName</span>
+                                </td>
+                                <td><Badge Tone="@TypeTone(line.AccountType)">@line.AccountType</Badge></td>
+                                <td class="text-right font-mono tnum @(line.Balance < 0 ? "text-danger-400" : "text-slate-200")">@Format.Money(line.Balance)</td>
+                            </Row>
+                        </DataTable>
+                    }
+                </Card>
+            </section>
+
+            <section class="flex flex-col gap-4 animate-rise" style="animation-delay:250ms">
+                <SectionHeader Title="Budgets">
+                    <ActionFragment>
+                        <a href="/budgets" class="text-xs font-medium text-accent-400 outline-none transition-colors hover:text-accent-300">Manage &rarr;</a>
+                    </ActionFragment>
+                </SectionHeader>
+                <Card Class="flex flex-col gap-5">
+                    @if (_budgets.Count == 0)
+                    {
+                        <EmptyState Title="No budgets set" Hint="Set a limit on an expense category to track it here." />
+                    }
+                    else
+                    {
+                        @foreach (BudgetRow row in _budgetRows)
+                        {
+                            <BudgetBar Label="@row.Budget.Category"
+                                       Spent="row.Evaluation?.SpentAmount ?? 0"
+                                       Limit="row.Budget.LimitAmount" />
+                        }
+                    }
+                </Card>
+            </section>
+        </div>
+
+        @* ---------- Recent entries ---------- *@
+        <section class="flex flex-col gap-4 animate-rise" style="animation-delay:300ms">
+            <SectionHeader Title="Recent entries">
+                <ActionFragment>
+                    <a href="/journal" class="text-xs font-medium text-accent-400 outline-none transition-colors hover:text-accent-300">All entries &rarr;</a>
+                </ActionFragment>
+            </SectionHeader>
+            <Card Flush="true">
+                @if (_recentEntries.Count == 0)
+                {
+                    <EmptyState Title="No journal entries yet" Hint="Your three latest posted entries will appear here." />
+                }
+                else
+                {
+                    <DataTable TItem="JournalEntryResponse" Items="_recentEntries">
+                        <TableHeader>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Lines</th>
+                            <th class="text-right">Amount</th>
+                        </TableHeader>
+                        <Row Context="entry">
+                            <td class="font-mono text-xs whitespace-nowrap text-slate-400 tnum">@Format.Timestamp(entry.OccurredOnUtc)</td>
+                            <td class="text-slate-200">@(string.IsNullOrWhiteSpace(entry.Description) ? "—" : entry.Description)</td>
+                            <td class="text-xs text-slate-500 tnum">@($"{entry.Lines.Count} lines")</td>
+                            <td class="text-right font-mono tnum text-slate-100">@Format.Money(entry.Lines.Sum(line => line.Debit))</td>
+                        </Row>
+                    </DataTable>
+                }
+            </Card>
+        </section>
+    }
+</div>
+
+@code {
+    private TrialBalanceResponse? _trialBalance;
+    private IReadOnlyList<BudgetResponse> _budgets = [];
+    private IReadOnlyList<JournalEntryResponse> _recentEntries = [];
+    private bool _isLoading = true;
+    private string? _error;
+
+    private IReadOnlyList<TrialBalanceLine> _topAccounts = [];
+    private IReadOnlyList<BudgetRow> _budgetRows = [];
+    private int _budgetsAtRisk;
+    private int _debitLineCount;
+    private int _creditLineCount;
+
+    protected override void OnInitialized() => PeriodState.Changed += OnPeriodChanged;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (!PeriodState.IsLoaded)
+            {
+                await PeriodState.LoadAsync();
+            }
+
+            if (PeriodState.CurrentPeriod is not null)
+            {
+                await LoadDataAsync();
+            }
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex is ApiException api ? api.PrimaryError : "Could not reach the LedgerLite API. Make sure it is running.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        Guid periodId = PeriodState.CurrentPeriod!.Id;
+        _error = null;
+        _isLoading = true;
+        try
+        {
+            TrialBalanceResponse balance = await Api.GetTrialBalanceAsync(periodId);
+            IReadOnlyList<BudgetResponse> budgets = await Api.GetBudgetsAsync(periodId);
+            IReadOnlyList<BudgetEvaluationResponse> evaluations = await Api.EvaluateBudgetsAsync(periodId);
+            PagedResult<JournalEntryResponse> recent = await Api.GetJournalEntriesAsync(periodId, page: 1, pageSize: 3);
+
+            _trialBalance = balance;
+            _budgets = budgets;
+            _recentEntries = recent.Items;
+            _topAccounts = [.. balance.Lines.OrderByDescending(line => Math.Abs(line.Balance)).Take(6)];
+            _budgetRows = [.. budgets
+                .Select(budget => new BudgetRow(budget, evaluations.FirstOrDefault(evaluation => evaluation.BudgetId == budget.Id)))];
+            _budgetsAtRisk = _budgetRows.Count(row => row.Evaluation?.ThresholdsExceeded.Count > 0);
+            _debitLineCount = balance.Lines.Count(line => line.TotalDebits > 0);
+            _creditLineCount = balance.Lines.Count(line => line.TotalCredits > 0);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException)
+        {
+            _error = ex is ApiException api ? api.PrimaryError : "Could not reach the LedgerLite API. Make sure it is running.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OnPeriodChanged() => _ = InvokeAsync(async () =>
+    {
+        if (PeriodState.CurrentPeriod is not null)
+        {
+            await LoadDataAsync();
+        }
+    });
+
+    private static BadgeTone TypeTone(AccountType type) => type switch
+    {
+        AccountType.Asset => BadgeTone.Sky,
+        AccountType.Liability => BadgeTone.Amber,
+        AccountType.Equity => BadgeTone.Violet,
+        AccountType.Revenue => BadgeTone.Emerald,
+        AccountType.Expense => BadgeTone.Red,
+        _ => BadgeTone.Slate
+    };
+
+    private sealed record BudgetRow(BudgetResponse Budget, BudgetEvaluationResponse? Evaluation);
+
+    public void Dispose() => PeriodState.Changed -= OnPeriodChanged;
+}

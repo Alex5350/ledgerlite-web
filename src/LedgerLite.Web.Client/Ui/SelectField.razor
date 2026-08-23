@@ -1,0 +1,55 @@
+<div class="@($"flex flex-col gap-1.5 {Class}")">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <label class="text-xs font-medium uppercase tracking-wider text-slate-500">@Label</label>
+    }
+    <select value="@Value" @onchange="OnChange" class="@SelectClass" aria-invalid="@(string.IsNullOrWhiteSpace(Error) ? null : "true")">
+        @if (!string.IsNullOrWhiteSpace(Placeholder))
+        {
+            <option value="">@Placeholder</option>
+        }
+        @ChildContent
+    </select>
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <p class="text-xs text-danger-400" role="alert">@Error</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(Hint))
+    {
+        <p class="text-xs text-slate-500">@Hint</p>
+    }
+</div>
+
+@code {
+    /// <summary>Currently selected value (option value string; two-way bindable).</summary>
+    [Parameter] public string Value { get; set; } = string.Empty;
+
+    /// <summary>Raised when the selection changes.</summary>
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Field label.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Text of the empty &lt;option value=""&gt; prepended before <see cref="ChildContent"/>.</summary>
+    [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>Validation error — red border + message.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    /// <summary>Muted helper text, hidden while <see cref="Error"/> is set.</summary>
+    [Parameter] public string? Hint { get; set; }
+
+    /// <summary>The &lt;option&gt; elements.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Extra classes for the root wrapper.</summary>
+    [Parameter] public string Class { get; set; } = string.Empty;
+
+    private string SelectClass =>
+        "w-full appearance-none rounded-lg border bg-ink-800 px-3 py-2 text-sm text-slate-100 outline-none transition-colors " +
+        "focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 " +
+        (string.IsNullOrWhiteSpace(Error) ? "border-white/10" : "border-danger-500/60");
+
+    private async Task OnChange(ChangeEventArgs args) =>
+        await ValueChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+}

@@ -1,0 +1,70 @@
+<div class="@($"flex flex-col gap-1.5 {Class}")">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <label class="text-xs font-medium uppercase tracking-wider text-slate-500">@Label</label>
+    }
+    <input type="@Type"
+           value="@Value"
+           @oninput="OnInput"
+           placeholder="@Placeholder"
+           step="@Step"
+           inputmode="@InputMode"
+           autocomplete="@Autocomplete"
+           class="@InputClass"
+           aria-invalid="@(string.IsNullOrWhiteSpace(Error) ? null : "true")" />
+    @if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <p class="text-xs text-danger-400" role="alert">@Error</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(Hint))
+    {
+        <p class="text-xs text-slate-500">@Hint</p>
+    }
+</div>
+
+@code {
+    /// <summary>Current value (two-way bindable: <c>@bind-Value</c>).</summary>
+    [Parameter] public string Value { get; set; } = string.Empty;
+
+    /// <summary>Raised on every keystroke with the new raw value.</summary>
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Field label.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Native input type: text, password, date, email, ...</summary>
+    [Parameter] public string Type { get; set; } = "text";
+
+    /// <summary>Placeholder text.</summary>
+    [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>Native step attribute (for numeric/date inputs).</summary>
+    [Parameter] public string? Step { get; set; }
+
+    /// <summary>Native inputmode hint (e.g. "decimal").</summary>
+    [Parameter] public string? InputMode { get; set; }
+
+    /// <summary>Validation error — renders a red border and message.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    /// <summary>Muted helper text, hidden while <see cref="Error"/> is set.</summary>
+    [Parameter] public string? Hint { get; set; }
+
+    /// <summary>Renders the value in mono with tabular numerals (amounts).</summary>
+    [Parameter] public bool Mono { get; set; }
+
+    /// <summary>Native autocomplete hint (e.g. "email", "current-password").</summary>
+    [Parameter] public string? Autocomplete { get; set; }
+
+    /// <summary>Extra classes for the root wrapper.</summary>
+    [Parameter] public string Class { get; set; } = string.Empty;
+
+    private string InputClass =>
+        "w-full rounded-lg border bg-ink-800 px-3 py-2 text-sm text-slate-100 outline-none transition-colors " +
+        "placeholder:text-slate-600 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 " +
+        (string.IsNullOrWhiteSpace(Error) ? "border-white/10" : "border-danger-500/60") +
+        (Mono ? " font-mono tnum" : string.Empty);
+
+    private async Task OnInput(ChangeEventArgs args) =>
+        await ValueChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+}

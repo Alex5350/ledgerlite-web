@@ -1,0 +1,17 @@
+@inject NavigationManager Navigation
+
+@code {
+    // Renders inside AuthorizeRouteView's NotAuthorized fragment. Preserves the
+    // requested URL so the login page can send the user back after signing in.
+    protected override void OnInitialized()
+    {
+        string pathAndQuery = new Uri(Navigation.Uri).PathAndQuery;
+        if (pathAndQuery.StartsWith("/login", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(pathAndQuery)}");
+    }
+}

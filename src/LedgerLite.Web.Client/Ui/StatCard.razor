@@ -1,0 +1,58 @@
+<div class="@($"card-surface p-5 transition-colors duration-200 hover:border-white/[0.14] {Class}")" style="@Style">
+    <div class="flex items-start justify-between gap-3">
+        <p class="mt-0.5 text-xs font-medium uppercase tracking-wider text-slate-500">@Label</p>
+        @if (IconFragment is not null)
+        {
+            <div class="rounded-lg border border-white/[0.07] bg-white/[0.03] p-2 text-accent-400">
+                @IconFragment
+            </div>
+        }
+    </div>
+    <p class="mt-3 font-display text-3xl font-semibold tnum @ValueClass">@Value</p>
+    @if (!string.IsNullOrWhiteSpace(Delta))
+    {
+        <p class="mt-1.5 text-xs font-medium @DeltaClass">@Delta</p>
+    }
+</div>
+
+@code {
+    /// <summary>Uppercase caption, e.g. "Total debits".</summary>
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+
+    /// <summary>Pre-formatted value (use <see cref="Format.Money"/>), rendered large with tabular numerals.</summary>
+    [Parameter, EditorRequired] public string Value { get; set; } = string.Empty;
+
+    /// <summary>Optional tone for the big value (e.g. red when out of balance).</summary>
+    [Parameter] public StatTone Tone { get; set; } = StatTone.Neutral;
+
+    /// <summary>Optional caption under the value.</summary>
+    [Parameter] public string? Delta { get; set; }
+
+    /// <summary>Tone for <see cref="Delta"/>.</summary>
+    [Parameter] public StatTone DeltaTone { get; set; } = StatTone.Neutral;
+
+    /// <summary>Optional icon (inline SVG, size-4/5) rendered in the top-right corner.</summary>
+    [Parameter] public RenderFragment? IconFragment { get; set; }
+
+    /// <summary>Extra classes for the root (e.g. "animate-rise").</summary>
+    [Parameter] public string Class { get; set; } = string.Empty;
+
+    /// <summary>Inline styles (e.g. animation-delay stagger).</summary>
+    [Parameter] public string Style { get; set; } = string.Empty;
+
+    private string ValueClass => Tone switch
+    {
+        StatTone.Emerald => "text-accent-400",
+        StatTone.Amber => "text-warn-400",
+        StatTone.Red => "text-danger-400",
+        _ => "text-slate-100"
+    };
+
+    private string DeltaClass => DeltaTone switch
+    {
+        StatTone.Emerald => "text-accent-400",
+        StatTone.Amber => "text-warn-400",
+        StatTone.Red => "text-danger-400",
+        _ => "text-slate-500"
+    };
+}

@@ -1,0 +1,10 @@
+@inject NavigationManager Navigation
+
+@code {
+    /// <summary>Destination path (and optional query) to navigate to.</summary>
+    [Parameter, EditorRequired] public string To { get; set; } = "/";
+
+    // Navigating during the static prerender turns into an HTTP redirect;
+    // inside an interactive circuit it is a client-side navigation.
+    protected override void OnInitialized() => Navigation.NavigateTo(To);
+}

@@ -1,0 +1,46 @@
+<div class="@Class">
+    <div class="flex items-baseline justify-between gap-3">
+        <p class="truncate text-sm font-medium text-slate-300">@Label</p>
+        <p class="shrink-0 font-mono text-xs tnum text-slate-500">@Format.Money(Spent) / @Format.Money(Limit)</p>
+    </div>
+    <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]" role="progressbar"
+         aria-valuemin="0" aria-valuemax="100" aria-valuenow="@Percent" aria-label="@Label budget usage">
+        <div class="h-full rounded-full transition-all duration-500 @BarClass" style="@($"width:{BarWidth:0.##}%")"></div>
+    </div>
+    <div class="mt-1.5 flex justify-end">
+        <p class="font-mono text-xs tnum @PercentClass">@Format.Percent(PercentRatio)% used</p>
+    </div>
+</div>
+
+@code {
+    /// <summary>Budget/category name.</summary>
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+
+    /// <summary>Amount posted against the budget so far.</summary>
+    [Parameter] public decimal Spent { get; set; }
+
+    /// <summary>Budget limit.</summary>
+    [Parameter] public decimal Limit { get; set; }
+
+    /// <summary>Extra classes for the root.</summary>
+    [Parameter] public string Class { get; set; } = string.Empty;
+
+    private decimal PercentRatio => Limit <= 0 ? 0 : Spent / Limit;
+
+    private decimal Percent => Math.Round(PercentRatio * 100m, 1);
+
+    /// <summary>Bar width is capped at 100%; the numeric label still shows the true value.</summary>
+    private decimal BarWidth => Math.Clamp(Percent, 0, 100);
+
+    private bool IsDanger => Percent >= 100m;
+
+    private bool IsWarning => Percent >= 80m && !IsDanger;
+
+    private string BarClass => IsDanger
+        ? "bg-danger-500 shadow-[0_0_10px] shadow-danger-500/50"
+        : IsWarning
+            ? "bg-warn-400 shadow-[0_0_10px] shadow-warn-400/40"
+            : "bg-accent-500";
+
+    private string PercentClass => IsDanger ? "text-danger-400" : IsWarning ? "text-warn-400" : "text-slate-500";
+}

@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A modern Blazor front-end for the [LedgerLite API](https://github.com/Alex5350/ledgerlite): a
-double-entry personal ledger with budgets, fiscal periods and a trial balance - built with a
+double-entry personal ledger with budgets, fiscal periods and a trial balance, built with a
 **hand-crafted Tailwind design system** instead of a stock component kit.
 
 | Login | Overview dashboard |
@@ -23,7 +23,7 @@ double-entry personal ledger with budgets, fiscal periods and a trial balance - 
 
 ## Why this project exists
 
-LedgerLite Web is a **personal reference application** - a deliberate, self-contained
+LedgerLite Web is a **personal reference application**, a deliberate, self-contained
 exercise in building a production-shaped Blazor front-end against a real API: Interactive
 Auto across both hosting models, a hand-built component kit instead of a third-party one,
 JWT authentication wired end to end, and tests at every layer. It pairs with the
@@ -54,7 +54,7 @@ clone-and-run experience.
 
 ## Getting started
 
-You need the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0). Nothing else -
+You need the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0). Nothing else;
 the backend uses SQLite and seeds demo data on first run.
 
 ```bash
@@ -75,7 +75,7 @@ Overview dashboard with the seeded "January 2026" period already selected.
 ### Docker
 
 The root `Dockerfile` builds the **backend API** container (the imported LedgerLite
-API - see its [repository](https://github.com/Alex5350/ledgerlite) for deployment notes).
+API; see its [repository](https://github.com/Alex5350/ledgerlite) for deployment notes).
 The Blazor UI is intended for `dotnet run` during development:
 
 ```bash
@@ -98,7 +98,7 @@ docker build -t ledgerlite-api . && docker run -p 5080:8080 ledgerlite-api
 
 </details>
 
-> The backend is the LedgerLite REST API - DDD/Clean Architecture, JWT-secured minimal APIs,
+> The backend is the LedgerLite REST API: DDD/Clean Architecture, JWT-secured minimal APIs,
 > 262 backend tests. Its full documentation and history live at
 > [Alex5350/ledgerlite](https://github.com/Alex5350/ledgerlite); it is included in this
 > repository unchanged so one clone runs everything.
@@ -124,10 +124,12 @@ npm run build:css  # or: npm run watch:css
 | **Budgets** | Spending progress bars that turn amber at 80% and red at 100%, threshold badges, re-evaluation |
 | **Trial Balance** | Full report with totals and a balanced indicator |
 
-Every mutation flows through the API's domain validation - domain errors (RFC 9457
+Every mutation flows through the API's domain validation: domain errors (RFC 9457
 ProblemDetails) are parsed into `ApiException` and rendered inline or as toasts.
 
 ## Architecture
+
+![Request flow - the browser loads the Blazor host (static SSR, then Interactive Auto); one component library runs on both the SignalR server circuit and WebAssembly; login exchanges credentials for a JWT sent as a bearer header to the LedgerLite API, which runs CQRS use cases over the double-entry domain and persists through EF Core to SQLite](docs/diagrams/request-flow.svg)
 
 ```
 src/
@@ -175,7 +177,7 @@ Mocks are provided by a shared `AppTestContext` (NSubstitute + cascading authent
 - **Blazor Web App** (.NET 10) - Interactive Auto (Server + WebAssembly), static SSR, router-level auth
 - **Tailwind CSS v4** design tokens + hand-built component library (no UI kit dependency)
 - **bUnit** 1.40, **xUnit v3**, **NSubstitute**
-- Backend: ASP.NET Core minimal APIs, EF Core 10 + SQLite, Serilog - see the
+- Backend: ASP.NET Core minimal APIs, EF Core 10 + SQLite, Serilog; see the
   [API repository](https://github.com/Alex5350/ledgerlite)
 
 ## License

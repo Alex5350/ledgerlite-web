@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-label="LedgerLite.Web architecture - the browser loads the Blazor host which serves static SSR immediately and upgrades to Interactive Server (SignalR circuit) or WebAssembly; one component library runs in both render modes; login exchanges credentials for a JWT stored client-side and sent as a bearer header to the ASP.NET Core API, which runs CQRS use cases over the double-entry domain and persists through EF Core to SQLite.">
+  <defs>
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1" fill="#1B2737"/>
+    </pattern>
+  </defs>
+  <style>
+    .t-title { font: 600 20px ui-sans-serif, system-ui, sans-serif; fill: #E2E8F0; }
+    .t-sub   { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #64748B; }
+    .t-node  { font: 600 13px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #E2E8F0; letter-spacing: .5px; }
+    .t-body  { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #94A3B8; }
+    .t-mut   { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #64748B; }
+    .t-chip  { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #38BDF8; }
+    .edge   { stroke: #1F2B3D; stroke-width: 1.5; fill: none; }
+    .flowB  { stroke: #38BDF8; stroke-width: 2; fill: none; stroke-dasharray: 5 11; opacity: .85; animation: dashB 1.5s linear infinite; }
+    .flowE  { stroke: #34D399; stroke-width: 1.5; fill: none; stroke-dasharray: 5 11; opacity: .8; animation: dashE 1.4s linear infinite; }
+    .flowA  { stroke: #F59E0B; stroke-width: 1.5; fill: none; stroke-dasharray: 4 10; opacity: .65; animation: dashA 1.2s linear infinite; }
+    .flowR  { stroke: #F87171; stroke-width: 1.5; fill: none; stroke-dasharray: 4 10; opacity: .55; animation: dashA 1.6s linear infinite; }
+    .node   { fill: #0E1620; stroke: #22304A; stroke-width: 1.2; }
+    .pulse  { animation: pulse 3s ease-in-out infinite; }
+    .pulse2 { animation: pulse 3.4s ease-in-out .6s infinite; }
+    @keyframes dashB { to { stroke-dashoffset: -16; } }
+    @keyframes dashE { to { stroke-dashoffset: -16; } }
+    @keyframes dashA { to { stroke-dashoffset: 16; } }
+    @keyframes pulse { 0%, 100% { stroke-opacity: 1; } 50% { stroke-opacity: .5; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  </style>
+
+  <rect width="1200" height="640" fill="#0B1118"/>
+  <rect width="1200" height="640" fill="url(#dots)" opacity=".5"/>
+
+  <text x="40" y="46" class="t-title">LedgerLite.Web - how a request flows</text>
+  <text x="40" y="68" class="t-sub">data in sky · JWT auth in emerald · interactive circuit in amber · WASM download in rose</text>
+  <rect x="880" y="30" width="280" height="26" rx="13" fill="none" stroke="#38BDF8" stroke-opacity=".5"/>
+  <text x="1020" y="47" class="t-chip" text-anchor="middle">one component library, both render modes</text>
+
+  <!-- request path -->
+  <path class="edge"  d="M180,320 H278"/>
+  <path class="flowB" d="M180,320 H278"/>
+  <text x="229" y="310" class="t-mut" text-anchor="middle">https</text>
+
+  <path class="edge"  d="M470,290 C510,262 540,262 568,262"/>
+  <path class="flowB" d="M470,290 C510,262 540,262 568,262"/>
+  <text x="518" y="252" class="t-mut" text-anchor="middle">/api JSON + bearer</text>
+
+  <path class="edge"  d="M830,262 C860,262 870,290 878,312"/>
+  <path class="flowB" d="M830,262 C860,262 870,290 878,312" opacity=".55"/>
+  <text x="866" y="286" class="t-mut">CQRS</text>
+
+  <path class="edge"  d="M930,368 V408"/>
+  <path class="flowB" d="M930,368 V408" opacity=".5"/>
+  <text x="942" y="392" class="t-mut">domain rules</text>
+
+  <path class="edge"  d="M930,468 V508"/>
+  <path class="flowB" d="M930,468 V508" opacity=".5"/>
+  <text x="942" y="492" class="t-mut">EF Core</text>
+
+  <!-- auth flow -->
+  <path class="edge"  d="M560,300 C500,368 420,384 350,368"/>
+  <path class="flowE" d="M560,300 C500,368 420,384 350,368"/>
+  <text x="470" y="388" class="t-mut" text-anchor="middle">login → JWT → token store</text>
+
+  <!-- circuit -->
+  <path class="edge"  d="M340,282 C340,206 420,186 500,176"/>
+  <path class="flowA" d="M340,282 C340,206 420,186 500,176"/>
+  <text x="398" y="212" class="t-mut" text-anchor="middle" fill="#F59E0B">SignalR circuit</text>
+
+  <!-- WASM -->
+  <path class="edge"  d="M340,358 C340,420 420,444 498,446"/>
+  <path class="flowR" d="M340,358 C340,420 420,444 498,446"/>
+  <text x="398" y="432" class="t-mut" text-anchor="middle" fill="#F87171">.wasm payload</text>
+
+  <!-- nodes -->
+  <g>
+    <rect class="node" x="20" y="278" width="160" height="84" rx="10"/>
+    <text x="40" y="304" class="t-node">BROWSER</text>
+    <text x="40" y="324" class="t-body">ledger pages</text>
+    <text x="40" y="340" class="t-body">bearer token on /api</text>
+  </g>
+
+  <g>
+    <rect class="node pulse" x="278" y="278" width="192" height="84" rx="12"/>
+    <text x="298" y="304" class="t-node">BLAZOR HOST</text>
+    <text x="298" y="324" class="t-body">static SSR first paint</text>
+    <text x="298" y="340" class="t-body">Interactive Auto upgrade</text>
+  </g>
+
+  <g>
+    <rect class="node" x="500" y="130" width="220" height="92" rx="12"/>
+    <text x="520" y="156" class="t-node">INTERACTIVE SERVER</text>
+    <text x="520" y="176" class="t-body">SignalR · fast first</text>
+    <text x="520" y="192" class="t-body">interaction</text>
+    <text x="520" y="212" class="t-body">runs .NET on the server</text>
+  </g>
+
+  <g>
+    <rect class="node" x="498" y="400" width="222" height="92" rx="12"/>
+    <text x="518" y="426" class="t-node">WEBASSEMBLY</text>
+    <text x="518" y="446" class="t-body">same components</text>
+    <text x="518" y="462" class="t-body">runs client-side .NET</text>
+    <text x="518" y="482" class="t-body">offline-ish after download</text>
+  </g>
+
+  <g>
+    <rect class="node" x="150" y="330" width="200" height="76" rx="12"/>
+    <text x="170" y="356" class="t-node">AUTH (JWT)</text>
+    <text x="170" y="376" class="t-body">token store · state</text>
+    <text x="170" y="392" class="t-body">provider · bearer handler</text>
+  </g>
+
+  <g>
+    <rect class="node pulse" x="568" y="220" width="262" height="84" rx="12"/>
+    <text x="588" y="246" class="t-node">LEDGERLITE API</text>
+    <text x="588" y="266" class="t-body">ASP.NET Core · ProblemDetails</text>
+    <text x="588" y="282" class="t-body">validated JWT · ErrorOr → HTTP</text>
+  </g>
+
+  <g>
+    <rect class="node" x="878" y="308" width="204" height="60" rx="10"/>
+    <text x="898" y="332" class="t-node">APPLICATION</text>
+    <text x="898" y="350" class="t-body">use cases · DTOs</text>
+  </g>
+
+  <g>
+    <rect class="node" x="878" y="408" width="204" height="60" rx="10"/>
+    <text x="898" y="432" class="t-node">DOMAIN</text>
+    <text x="898" y="450" class="t-body">double-entry ledger</text>
+  </g>
+
+  <g>
+    <rect class="node pulse2" x="878" y="508" width="204" height="76" rx="10"/>
+    <text x="898" y="532" class="t-node">SQLITE</text>
+    <text x="898" y="550" class="t-body">EF Core · migrations</text>
+    <text x="898" y="566" class="t-body">seeded demo ledger</text>
+  </g>
+
+  <!-- legend -->
+  <g>
+    <text x="40" y="608" class="t-mut">sky: data requests</text>
+    <text x="175" y="608" class="t-mut" fill="#34D399">emerald: JWT flow</text>
+    <text x="315" y="608" class="t-mut" fill="#F59E0B">amber: server circuit</text>
+    <text x="465" y="608" class="t-mut" fill="#F87171">rose: WASM download</text>
+    <text x="620" y="608" class="t-mut">· 119 web + 262 backend tests pin the behavior</text>
+  </g>
+</svg>
